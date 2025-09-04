@@ -167,7 +167,7 @@ local function checkPets()
             local ownerName = getPetOwner(obj)
 
             local joinLink = string.format(
-                "https://hxck4x416.github.io/Notifier/?placeId=%s&gameInstanceId=%s",
+                "https://hxck4x416.github.io/Notifier/?placeId=%d&gameInstanceId=%s",
                 tostring(game.PlaceId),
                 tostring(game.JobId)
             )
