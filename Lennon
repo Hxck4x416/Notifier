@@ -167,7 +167,7 @@ local function checkPets()
             local ownerName = getPetOwner(obj)
 
             local joinLink = string.format(
-                "https://www.roblox.com/games/%s/-?gameInstanceId=%s",
+                "roblox://placeID=%s&gameInstanceId=%s",
                 tostring(game.PlaceId),
                 tostring(game.JobId)
             )

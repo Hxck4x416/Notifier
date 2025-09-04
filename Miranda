@@ -34,7 +34,7 @@ local function sendDiscordEmbed(args)
         embeds = {{
             title = args.title or "Evento",
             description = args.description or "",
-            color = args.color or 16776960,
+            color = args.color or 16711680,
             fields = args.fields or {},
             footer = { text = args.footer or "" },
             timestamp = args.timestamp or os.date("!%Y-%m-%dT%H:%M:%SZ")
@@ -184,7 +184,7 @@ local function checkPets()
             sendDiscordEmbed({
                 title = "🐾 Mascota objetivo detectada",
                 description = "Se ha encontrado una mascota de la lista notifyPets.",
-                color = 65280,
+                color = 16711680,
                 fields = embedFields,
                 footer = "Pet Notifier",
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
