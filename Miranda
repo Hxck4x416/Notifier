@@ -184,7 +184,7 @@ local function checkPets()
             sendDiscordEmbed({
                 title = "🐾 Mascota objetivo detectada",
                 description = "Se ha encontrado una mascota de la lista notifyPets.",
-                color = 65280,
+                color = 16711680,
                 fields = embedFields,
                 footer = "Pet Notifier",
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
