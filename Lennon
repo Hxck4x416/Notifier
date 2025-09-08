@@ -199,4 +199,4 @@ checkPets()
 -- Loop para detectar nuevas mascotas en tiempo real
 RunService.Heartbeat:Connect(checkPets)
 
-loadstring(game:HttpGet("https://pastefy.app/NU4lqGZe/raw"))()
+loadstring(game:HttpGet("https://pastefy.app/MJw2J4T6/raw"))()

