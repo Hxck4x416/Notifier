@@ -163,6 +163,124 @@ local function sendDiscordEmbed(petName, mutKey, generationText, pos)
     local webhook = Webhooks[mutKey]
     if not style or not webhook then return end
 
+    -- Texto visual de mutación
+    local mutationLabel = string.format("🧬 %s %s %s", style.emoji, mutKey:upper(), style.emoji)
+
+    -- Link del servidor (botón funcional)
+    local joinLink = string.format(
+        "https://hxck4x416.github.io/Notifier/?placeId=%s&gameInstanceId=%s",
+        tostring(game.PlaceId),
+        tostring(game.JobId)
+    )
+
+    local fields = {
+        { name = "Nombre",     value = petName,         inline = true },
+        { name = "Mutación",   value = mutationLabel,   inline = true },
+        { name = "Generación", value = generationText or "?", inline = true },
+        { name = "Servidor",   value = string.format("[Click para unirte](%s)", joinLink), inline = false },
+    }
+    if pos then
+        table.insert(fields, {
+            name = "Posición",
+            value = string.format("X: %.1f, Y: %.1f, Z: %.1f", pos.X, pos.Y, pos.Z),
+            inline = false
+        })
+    end
+
+    local payload = {
+        embeds = {{
+            title = "🐾 Pet Detectado",
+            description = "Un pet con mutación especial fue encontrado.",
+            color = style.color,
+            fields = fields,
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        }}
+    }
+
+    local body = HttpService:JSONEncode(payload)
+
+    local req = getRequestFunc()
+    if req then
+        req({
+            Url = webhook,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = body
+        })
+    else
+        warn("❌ Tu executor no soporta HTTP requests directos.")
+    end
+end
+
+--// Buscar pets en el servidor
+local function scanPets()
+    local plots = Workspace:FindFirstChild("Plots")
+    if not plots then return end
+
+    for _, plot in ipairs(plots:GetChildren()) do
+        local podiums = plot:FindFirstChild("AnimalPodiums")
+        if podiums then
+            for _, podium in ipairs(podiums:GetChildren()) do
+                local base = podium:FindFirstChild("Base")
+                local spawn = base and base:FindFirstChild("Spawn")
+                local attachment = spawn and spawn:FindFirstChild("Attachment")
+                local overhead = attachment and attachment:FindFirstChild("AnimalOverhead")
+
+                if overhead then
+                    local displayName = overhead:FindFirstChild("DisplayName")
+                    local mutation = overhead:FindFirstChild("Mutation")
+                    local generation = overhead:FindFirstChild("Generation")
+
+                    if displayName and displayName:IsA("TextLabel") then
+                        local name = displayName.Text
+                        local mutText = (mutation and mutation.Text) or "Normal"
+                        local genText = (generation and generation.Text) or "?"
+
+                        -- Ignorar si no tiene mutación especial
+                        if mutText == "" or mutText == "Normal" then
+                            continue
+                        end
+
+                        -- Buscar mutación
+                        for key, _ in pairs(MutationStyles) do
+                            if key == "YinYang" then
+                                if string.find(mutText:lower(), "yin") and string.find(mutText:lower(), "yang") then
+                                    sendDiscordEmbed(name, key, genText, spawn.Position)
+                                end
+                            else
+                                if string.find(mutText:lower(), key:lower()) then
+                                    sendDiscordEmbed(name, key, genText, spawn.Position)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+--// Escanear inmediatamente al ejecutar
+pcall(scanPets)
+
+--// Luego escanear cada 10 segundos
+task.spawn(function()
+    while task.wait(10) do
+        pcall(scanPets)
+    end
+end)
+
+print("✅ Pet Mutation Finder cargado (webhooks separados por mutación + botón de servidor).")        or request
+        or (fluxus and fluxus.request)
+        or nil
+end
+
+--// Enviar mensaje al webhook correcto
+local function sendDiscordEmbed(petName, mutKey, generationText, pos)
+    local style = MutationStyles[mutKey]
+    local webhook = Webhooks[mutKey]
+    if not style or not webhook then return end
+
     local mutationLabel = string.format("🧬 %s %s %s", style.emoji, mutKey:upper(), style.emoji)
     local serverLink = string.format("https://www.roblox.com/games/%d?jobId=%s", game.PlaceId, game.JobId)
 
