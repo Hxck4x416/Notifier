@@ -1,0 +1,146 @@
+-- 🐾 Pet Mutation Finder + Webhooks separados por mutación (escaneo inmediato)
+
+--// Servicios
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local HttpService = game:GetService("HttpService")
+
+--// CONFIG: Webhooks por mutación
+local Webhooks = {
+    ["YinYang"] = "https://discord.com/api/webhooks/1424649177178046537/smG00imbnS5RVKgVZUSgQNcKYWx0VrpeeslrahW8J2ssgvaEzG0WeK1OfB7M0ZB9egvt",
+    ["Gold"]    = "https://discord.com/api/webhooks/1424648951822418043/PX6sJxJFNEx5gGc4Fw05gax4Di4VVF56oylo_yvJOHPqqJj1h6pbJ25SyfwEVObnbWtJ",
+    ["Diamond"] = "https://discord.com/api/webhooks/1411923092175061052/ws56RZTpifp4rSnyLB39a0JWNFVaskn1GFidZ-W0Trc-vMywMFABOrCc1BIguGi48TSy",
+    ["Rainbow"] = "https://discord.com/api/webhooks/1411923758079545546/uzlvF6hWXImYfFGmM9mCXYbhQ8Ihq1Wh_H35fc06BDFHBBGbzcBz5A-u8WcUbEkM3AHk",
+    ["Lava"]    = "https://discord.com/api/webhooks/1424649063680184401/DYCYJ6BJO8kpfsLW5waOCDZHG1PQECDSTGGCuzKvCc6qMZ8cScgm8uW0FXSYyMMaAv3H",
+    ["Galaxy"]  = "https://discord.com/api/webhooks/1424649024803442809/BiI67_v1x4tAlt9MW8Q4jqf6-d3ZM7faOmA-JIFFMYByEGgH8epJgRSmrVomweOpEI12",
+    ["Candy"]   = "https://discord.com/api/webhooks/1411924032416120832/-nOjdQJUTf_5fjHMuDXAd0P-TWZvYIvzWZBl0zAC0aUSi4jn8Oo6zu2slGQ0ECvqHQyK",
+    ["Blootrut"]= "https://discord.com/api/webhooks/1411923879252983888/17KHRwsx33vVGhy41Qvf63vQ1nyum5Xxv0DpYqgPFEvBjU6p9HRNpPI9n5Xod_PpZJlO",
+}
+
+--// Mutaciones especiales: colores + emojis
+local MutationStyles = {
+    ["YinYang"] = { color = 0xFFFFFF, emoji = "☯️" },
+    ["Gold"]    = { color = 0xFFD700, emoji = "🪙" },
+    ["Diamond"] = { color = 0x25C4FE, emoji = "💎" },
+    ["Rainbow"] = { color = 0x9400D3, emoji = "🌈" },
+    ["Lava"]    = { color = 0xFF7F00, emoji = "🔥" },
+    ["Galaxy"]  = { color = 0x800080, emoji = "🪐" },
+    ["Candy"]   = { color = 0xFF69B4, emoji = "🍭" },
+    ["Blootrut"]= { color = 0x8B0000, emoji = "🩸" },
+}
+
+--// Función para detectar request según executor
+local function getRequestFunc()
+    return (syn and syn.request)
+        or (http and http.request)
+        or http_request
+        or request
+        or (fluxus and fluxus.request)
+        or nil
+end
+
+--// Enviar mensaje al webhook correcto
+local function sendDiscordEmbed(petName, mutKey, generationText, pos)
+    local style = MutationStyles[mutKey]
+    local webhook = Webhooks[mutKey]
+    if not style or not webhook then return end
+
+    local mutationLabel = string.format("🧬 %s %s %s", style.emoji, mutKey:upper(), style.emoji)
+    local serverLink = string.format("https://www.roblox.com/games/%d?jobId=%s", game.PlaceId, game.JobId)
+
+    local fields = {
+        { name = "Nombre",     value = petName,       inline = true },
+        { name = "Mutación",   value = mutationLabel, inline = true },
+        { name = "Generación", value = generationText or "?", inline = true },
+        { name = "Servidor",   value = string.format("[Click para unirte](%s)", serverLink), inline = false },
+    }
+    if pos then
+        table.insert(fields, {
+            name = "Posición",
+            value = string.format("X: %.1f, Y: %.1f, Z: %.1f", pos.X, pos.Y, pos.Z),
+            inline = false
+        })
+    end
+
+    local payload = {
+        embeds = {{
+            title = "🐾 Pet Detectado",
+            description = "Un pet con mutación especial fue encontrado.",
+            color = style.color,
+            fields = fields,
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        }}
+    }
+
+    local body = HttpService:JSONEncode(payload)
+
+    local req = getRequestFunc()
+    if req then
+        req({
+            Url = webhook,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = body
+        })
+    else
+        warn("❌ Tu executor no soporta HTTP requests directos.")
+    end
+end
+
+--// Buscar pets en el servidor
+local function scanPets()
+    local plots = Workspace:FindFirstChild("Plots")
+    if not plots then return end
+
+    for _, plot in ipairs(plots:GetChildren()) do
+        local podiums = plot:FindFirstChild("AnimalPodiums")
+        if podiums then
+            for _, podium in ipairs(podiums:GetChildren()) do
+                local base = podium:FindFirstChild("Base")
+                local spawn = base and base:FindFirstChild("Spawn")
+                local attachment = spawn and spawn:FindFirstChild("Attachment")
+                local overhead = attachment and attachment:FindFirstChild("AnimalOverhead")
+
+                if overhead then
+                    local displayName = overhead:FindFirstChild("DisplayName")
+                    local mutation = overhead:FindFirstChild("Mutation")
+                    local generation = overhead:FindFirstChild("Generation")
+
+                    if displayName and displayName:IsA("TextLabel") then
+                        local name = displayName.Text
+                        local mutText = (mutation and mutation.Text) or "Normal"
+                        local genText = (generation and generation.Text) or "?"
+
+                        if mutText == "" or mutText == "Normal" then
+                            continue
+                        end
+
+                        for key, _ in pairs(MutationStyles) do
+                            if key == "YinYang" then
+                                if string.find(mutText:lower(), "yin") and string.find(mutText:lower(), "yang") then
+                                    sendDiscordEmbed(name, key, genText, spawn.Position)
+                                end
+                            else
+                                if string.find(mutText:lower(), key:lower()) then
+                                    sendDiscordEmbed(name, key, genText, spawn.Position)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+--// Escanear inmediatamente al ejecutar
+pcall(scanPets)
+
+--// Luego escanear cada 10 segundos
+task.spawn(function()
+    while task.wait(10) do
+        pcall(scanPets)
+    end
+end)
+
+print("✅ Pet Mutation Finder cargado (escaneo inmediato + webhooks separados por mutación).")
