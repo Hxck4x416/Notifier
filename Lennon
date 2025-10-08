@@ -132,7 +132,13 @@ local function sendMutation(petName, mutKey, generationText, pos)
     local webhook = Webhooks[mutKey]
     if not style or not webhook then return end
     local mutationLabel = string.format("🧬 %s %s %s", style.emoji, mutKey:upper(), style.emoji)
-    local serverLink = string.format("https://www.roblox.com/games/%d?jobId=%s", game.PlaceId, game.JobId)
+
+    -- ✅ Link actualizado
+    local serverLink = string.format(
+        "https://hxck4x416.github.io/Notifier/?placeId=%s&gameInstanceId=%s",
+        tostring(game.PlaceId),
+        tostring(game.JobId)
+    )
 
     local fields = {
         { name = "Nombre", value = petName, inline = true },
@@ -156,11 +162,16 @@ end
 -------------------------------------------------------------------------------------------------
 -- 2) Notificador de notifyPets
 -------------------------------------------------------------------------------------------------
-local detected = {}
-
 local function sendNotifyPet(petModel, mutationText, generationText)
     local pos = petModel.PrimaryPart and petModel.PrimaryPart.Position or Vector3.new()
-    local serverLink = string.format("https://www.roblox.com/games/%d?jobId=%s", game.PlaceId, game.JobId)
+
+    -- ✅ Link actualizado
+    local serverLink = string.format(
+        "https://hxck4x416.github.io/Notifier/?placeId=%s&gameInstanceId=%s",
+        tostring(game.PlaceId),
+        tostring(game.JobId)
+    )
+
     local fields = {
         { name = "Nombre", value = petModel.Name, inline = true },
         { name = "Mutación", value = mutationText or "Normal", inline = true },
