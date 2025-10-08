@@ -89,7 +89,7 @@ local notifyPets = {
     ["Tacorita Bicicleta"] = true,
     ["Tartaruga Cisterna"] = true,
     ["Torrtuginni Dragonfrutini"] = true,
-    ["Yess my Examen"] true,
+    ["Yess my Examen"] = true,
 }
 
 --// Compatibilidad con executors
