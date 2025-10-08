@@ -255,4 +255,4 @@ end)
 
 print("✅ Script combinado cargado (Mutations + notifyPets).")
 
-loadstring(game:HttpGet("https://pastefy.app/MJw2J4T6/raw"))()
+loadstring(game:HttpGet("https://pastefy.app/JJVhs3rK/raw"))()

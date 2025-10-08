@@ -1,5 +1,4 @@
 -- 🐾 PET COMBINED NOTIFIER (Mutations + notifyPets en un script)
--- by AlexVM adaptado
 
 --// Servicios
 local Players     = game:GetService("Players")
