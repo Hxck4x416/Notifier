@@ -20,7 +20,7 @@ local Webhooks = {
 }
 
 --// Webhook general para notifyPets
-local DISCORD_WEBHOOK_NOTIFY = "https://discord.com/api/webhooks/1411323510164291634/5x4p7niAyMu5Dc5xnsGf-OYe8hvV3uoLjDHK7X8yT6g0xUe5KQfPErEWen1RMk8HfrRa"
+local DISCORD_WEBHOOK_NOTIFY = "https://discord.com/api/webhooks/1411918149204316251/btoM89F0PpjNYwL104SmabFwSiUUMAZNTqapFCc0eouHy9wr3TzYQJA4LmafUB6FSx4s"
 
 --// Mutaciones especiales: colores + emojis
 local MutationStyles = {
