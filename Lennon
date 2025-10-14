@@ -157,7 +157,7 @@ local function sendMutation(petName, mutKey, generationText, pos)
     end
 
     sendDiscordEmbed(webhook, {
-        title = "🐾 Pet Mutación Detectada",
+        title = "🐾 Pet Mutación Detectada-Lennon",
         description = "Se encontró un pet con mutación especial.",
         color = style.color,
         fields = fields,
@@ -179,7 +179,7 @@ local function sendNotifyPet(petModel, mutationText, generationText)
     local fields = {
         { name = "Nombre", value = petModel.Name, inline = true },
         { name = "Mutación", value = mutationText or "Normal", inline = true },
-        { name = "Generación", value = generationText or "?", inline = true },
+        { name = "Generación", value = generationText, inline = true },
         { name = "Servidor", value = string.format("[Click para unirte](%s)", serverLink), inline = false },
         { name = "Posición", value = string.format("X: %.1f, Y: %.1f, Z: %.1f", pos.X, pos.Y, pos.Z), inline = false },
     }
