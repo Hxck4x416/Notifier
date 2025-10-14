@@ -9,7 +9,6 @@ local notifyPets = {
     ["Vampira Cappucina"] = true,
     ["Zombie Tralala"] = true,
     ["Frankentteo"] = true,
-    ["Tim Cheese"] = true,
 }
 
 --// Variable para evitar duplicados
