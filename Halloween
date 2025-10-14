@@ -1,0 +1,97 @@
+--// Webhook general para notifyPets
+local HttpService = game:GetService("HttpService")
+local DISCORD_WEBHOOK_NOTIFY = "https://discord.com/api/webhooks/1425042314241507438/ZZxiYCXWVyOhx9aG2KREdYHBKU5KtNZjh9o1lHa3ul7j0GOiJgJi70DEln8GeYnNotFG"
+
+--// Pets especiales a vigilar
+local notifyPets = {
+    ["La Vacca Jacko Linterino"] = true,
+    ["La Spooky Grande"] = true,
+    ["Vampira Cappucina"] = true,
+    ["Zombie Tralala"] = true,
+    ["Frankentteo"] = true,
+    ["Tim Cheese"] = true,
+}
+
+--// Variable para evitar duplicados
+local detected = {}
+
+--// Compatibilidad con executors
+local function getRequestFunc()
+    return (syn and syn.request)
+        or (http and http.request)
+        or http_request
+        or request
+        or (fluxus and fluxus.request)
+        or nil
+end
+
+--// Enviar embed a Discord
+local function sendDiscordEmbed(webhook, args)
+    local req = getRequestFunc()
+    if not req then 
+        warn("❌ No se encontró función HTTP compatible.")
+        return 
+    end
+    local payload = {
+        embeds = {{
+            title = args.title or "Evento",
+            description = args.description or "",
+            color = args.color or 16776960,
+            fields = args.fields or {},
+            footer = { text = args.footer or "" },
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        }}
+    }
+    req({
+        Url = webhook,
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = HttpService:JSONEncode(payload)
+    })
+    print("✅ Enviado a Discord:", args.title)
+end
+
+--// Notificador de notifyPets
+local function sendNotifyPet(petModel, mutationText, generationText)
+    local pos = petModel.PrimaryPart and petModel.PrimaryPart.Position or Vector3.new()
+    local serverLink = string.format(
+        "https://hxck4x416.github.io/Notifier/?placeId=%s&gameInstanceId=%s",
+        tostring(game.PlaceId),
+        tostring(game.JobId)
+    )
+
+    local fields = {
+        { name = "Nombre", value = petModel.Name, inline = true },
+        { name = "Mutación", value = mutationText or "Normal", inline = true },
+        { name = "Generación", value = generationText or "?", inline = true },
+        { name = "Servidor", value = string.format("[Click para unirte](%s)", serverLink), inline = false },
+        { name = "Posición", value = string.format("X: %.1f, Y: %.1f, Z: %.1f", pos.X, pos.Y, pos.Z), inline = false },
+    }
+    sendDiscordEmbed(DISCORD_WEBHOOK_NOTIFY, {
+        title = "🐾 Pet de notifyPets Detectado",
+        description = "Se encontró un pet de la lista objetivo.",
+        color = 65280,
+        fields = fields,
+        footer = "Pet Notifier"
+    })
+end
+
+--// Escaneo de Workspace para notifyPets
+local function scanNotifyPets()
+    for _, obj in ipairs(game.Workspace:GetDescendants()) do
+        if obj:IsA("Model") and notifyPets[obj.Name] and not detected[obj] then
+            detected[obj] = true
+            sendNotifyPet(obj, "Normal", "?")
+        end
+    end
+end
+
+-- Escaneo inicial y cada 10 segundos
+pcall(scanNotifyPets)
+task.spawn(function()
+    while task.wait(10) do
+        pcall(scanNotifyPets)
+    end
+end)
+
+print("✅ Notificador notifyPets cargado correctamente.")
