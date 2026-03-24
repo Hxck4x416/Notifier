@@ -23,7 +23,7 @@ end
 
 local PLACE_ID     = "109983668079237"
 local WEBHOOK      = "https://discord.com/api/webhooks/1485845525289893931/tSszY0KRQsFrJiN1v8D3qMbu6LDXhQWV1UCDMIHmxpf2jJ6xdwgHFRHC9gJsHRoKlrxq"
-local MIN_GEN      = 10000000
+local MIN_GEN      = 1
 local HOP_SECONDS  = 4
 local BATCH_COUNT  = 2
 
