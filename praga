@@ -35,21 +35,27 @@ local SPECIAL_PETS = {
 local MIN_GEN      = 1000000 
 local HOP_SECONDS  = 6
 
--- --- FUNCIONES DE IMAGEN ---
+-- --- FUNCIONES DE IMAGEN (BASADO EN EL NOMBRE DETECTADO) ---
 local function getImage(name)
     if not name then return nil end
     local cleaned = name:lower():gsub(" ", "-")
     return "https://steal-a-brainrot.org/_next/image?url=%2Fimages%2Fbrainrots%2F" .. cleaned .. ".webp&w=3840&q=90"
 end
 
--- --- FILTRO DE MÁQUINA (H, M, S) ---
+-- --- FILTRO DE MÁQUINA (EVITA h, m, s) ---
 local function isMachineGen(genText)
     if not genText then return false end
     local t = tostring(genText):lower():gsub("%s+","")
+    
+    -- Filtra formatos de tiempo: 1h, 20m 30s, etc.
     local isTime = t:match("%d+h") or t:match("%d+m%d+s") or t:match("%d+h%d+m")
+    
+    -- Si el número es entero y termina en 'm' o 's' sin punto (ej: 21m), es tiempo.
+    -- Las pets reales son "21.0M" o "100M" (con M mayúscula o procesadas por parseGen)
     if not t:find("%.") and (t:match("^%d+m$") or t:match("^%d+s$")) then
         isTime = true
     end
+    
     return isTime
 end
 
@@ -65,7 +71,7 @@ local function parseGen(text)
     return math.floor(n)
 end
 
--- --- HTTP ---
+-- --- HTTP POST ---
 local function httpPost(url, payload)
     local fn = request or http_request or (rawget(_G, "request"))
     if not fn then return end
@@ -79,7 +85,7 @@ local function httpPost(url, payload)
     end)
 end
 
--- --- ESCANEO ---
+-- --- ESCANEO DE SERVIDOR ---
 local function scan()
     local Debris = workspace:FindFirstChild("Debris")
     if not Debris then return end
@@ -112,7 +118,7 @@ local function scan()
                             color = (target == WEBHOOK_3) and 16711680 or (target == WEBHOOK_2 and 16753920 or 6139362),
                             thumbnail = { url = imgUrl },
                             fields = {
-                                {name = "Valor", value = "**" .. gl.Text .. "**", inline = true},
+                                {name = "Valor Detectado", value = "**" .. gl.Text .. "**", inline = true},
                                 {name = "Bot", value = plr.Name, inline = true}
                             },
                             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
@@ -134,7 +140,7 @@ local function setupAntiAfk()
     end)
 end
 
--- --- INICIO BOT ---
+-- --- INICIO AUTOMÁTICO ---
 local function startBot()
     setupAntiAfk()
     
@@ -143,21 +149,21 @@ local function startBot()
     label.Size = UDim2.new(0, 300, 0, 60)
     label.Position = UDim2.new(0.5, -150, 0.05, 0)
     label.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    label.TextColor3 = Color3.fromRGB(255, 160, 0)
+    label.TextColor3 = Color3.fromRGB(255, 140, 0)
     label.Font = Enum.Font.GothamBold
     label.TextSize = 16
     Instance.new("UICorner", label)
 
-    label.Text = "ESCANEANDO CON IMÁGENES..."
+    label.Text = "ESCANEANDO DATOS..."
     pcall(scan)
     task.wait(2)
 
     for i = HOP_SECONDS, 1, -1 do
-        label.Text = "SALTANDO SERVIDOR EN: " .. i .. "s"
+        label.Text = "PRÓXIMO SALTO EN: " .. i .. "s"
         task.wait(1)
     end
 
-    label.Text = "CAMBIANDO..."
+    label.Text = "SALTANDO DE SERVIDOR..."
     
     while true do
         pcall(function()
