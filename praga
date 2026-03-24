@@ -9,14 +9,13 @@ local plr       = Players.LocalPlayer
 local playerGui = plr:WaitForChild("PlayerGui")
 
 -- ==========================================================
--- CONFIGURACIÓN DE WEBHOOKS (PEGA AQUÍ TUS ENLACES)
+-- CONFIGURACIÓN DE WEBHOOKS
 -- ==========================================================
-local WEBHOOK_1 = "https://discord.com/api/webhooks/1485867097027252234/uuAoy4bjVepmdnqBNHbhQdCfBtJuEzT989pyNDuPDZxFdSUK3M3Pla0-R2WNsfnMVTrB" -- De 1M a 100M
-local WEBHOOK_2 = "https://discord.com/api/webhooks/1485845525289893931/tSszY0KRQsFrJiN1v8D3qMbu6LDXhQWV1UCDMIHmxpf2jJ6xdwgHFRHC9gJsHRoKlrxq" -- De 100M a 1B
-local WEBHOOK_3 = "https://discord.com/api/webhooks/1485867302095290378/7N3ERpL5QXOqFQ4XTra1bqRwxvnLMI3Sl0SbZogiFfS-avuUNsjiFpXzeVyrQd5p-kZD" -- Especiales O +1B
--- ==========================================================
+local WEBHOOK_1 = "https://discord.com/api/webhooks/1485867097027252234/uuAoy4bjVepmdnqBNHbhQdCfBtJuEzT989pyNDuPDZxFdSUK3M3Pla0-R2WNsfnMVTrB" -- 1M a 100M
+local WEBHOOK_2 = "https://discord.com/api/webhooks/1485845525289893931/tSszY0KRQsFrJiN1v8D3qMbu6LDXhQWV1UCDMIHmxpf2jJ6xdwgHFRHC9gJsHRoKlrxq" -- 100M a 1B
+local WEBHOOK_3 = "https://discord.com/api/webhooks/1485867302095290378/7N3ERpL5QXOqFQ4XTra1bqRwxvnLMI3Sl0SbZogiFfS-avuUNsjiFpXzeVyrQd5p-kZD" -- Especiales o +1B
 
--- LISTA DE PETS ESPECIALES (Directo al Webhook 3)
+-- LISTA DE PETS ESPECIALES
 local SPECIAL_PETS = {
     ["burguro and fryuro"] = true, ["capitano moby"] = true, ["cerberus"] = true,
     ["cooki and milki"] = true, ["dragon cannelloni"] = true,
@@ -37,15 +36,15 @@ local SPECIAL_PETS = {
 }
 
 local CONFIG_PATH = "pragra_v1.0_config.json"
-local PLACE_ID    = "109983668079237"
-local MIN_GEN     = 1000000 -- Solo pets de 1M para arriba
+local MIN_GEN     = 1000000 
 local HOP_SECONDS  = 5
 local RELAY_POST  = "http://72.61.5.202:3000/relay"
 
-local currentMode   = nil
+local currentMode   = "hop" -- Por defecto inicia en HOP
 local activeThreads = {}
 local sentState = {}
 local nowState  = {}
+local fusingOverheads = {}
 
 -- --- UTILIDADES ---
 local function loadConfig()
@@ -59,30 +58,24 @@ local function saveConfig(cfg)
     pcall(writefile, CONFIG_PATH, HttpService:JSONEncode(cfg))
 end
 
-local function stopAllThreads()
-    for _, t in ipairs(activeThreads) do pcall(task.cancel, t) end
-    activeThreads = {}
-end
-
-local _httpFn = nil
 local function getHttp()
-    if _httpFn then return _httpFn end
     for _, n in ipairs({"request","http_request"}) do
         local ok, f = pcall(function() return rawget(_G, n) end)
-        if ok and type(f)=="function" then _httpFn=f; return f end
+        if ok and type(f)=="function" then return f end
     end
     return request or http_request
 end
 
-local function rawHttp(opts)
-    local fn = getHttp(); if not fn then return nil end
-    local ok, r = pcall(fn, opts)
-    return ok and r or nil
-end
-
 local function httpPost(url, payload)
+    local fn = getHttp()
+    if not fn then return end
     task.spawn(function()
-        rawHttp({Url=url, Method="POST", Headers={["Content-Type"]="application/json"}, Body=HttpService:JSONEncode(payload)})
+        pcall(fn, {
+            Url = url,
+            Method = "POST",
+            Headers = {["Content-Type"]="application/json"},
+            Body = HttpService:JSONEncode(payload)
+        })
     end)
 end
 
@@ -93,7 +86,18 @@ local function fmtMillions(n)
     else return string.format("%.1fM", n/1e6) end
 end
 
--- --- LÓGICA DE DETECCIÓN ---
+-- --- LÓGICA DE DETECCIÓN Y ESCANEO ---
+local BASES = {
+    {minX=-345.21,maxX=-286.79,minZ=-129.68,maxZ=-70.52}, {minX=-347.74,maxX=-287.08,minZ=-24.34, maxZ=35.10 },
+    {minX=-345.99,maxX=-286.48,minZ=83.28,  maxZ=142.31}, {minX=-347.56,maxX=-286.52,minZ=191.39, maxZ=250.13},
+    {minX=-532.26,maxX=-473.37,minZ=192.39, maxZ=248.67}, {minX=-533.37,maxX=-472.37,minZ=84.78,  maxZ=143.82},
+    {minX=-532.88,maxX=-473.79,minZ=-22.91, maxZ=37.28 }, {minX=-533.50,maxX=-473.25,minZ=-129.12,maxZ=-70.64},
+}
+
+local function getBaseIdx(pos)
+    for i, b in ipairs(BASES) do if pos.X>=b.minX and pos.X<=b.maxX and pos.Z>=b.minZ and pos.Z<=b.maxZ then return i end end
+end
+
 local function parseGen(text)
     if not text or text=="" then return 0 end
     local t = tostring(text):lower():gsub("%s+",""):gsub(",",""):gsub("%$",""):gsub("/s","")
@@ -104,24 +108,33 @@ local function parseGen(text)
     return math.floor(n)
 end
 
-local function isFusing(name) return name and name:lower():find("fus") ~= nil end
-
-local function getImage(name)
-    local cleaned = name:lower():gsub(" ", "-")
-    return "https://steal-a-brainrot.org/_next/image?url=%2Fimages%2Fbrainrots%2F" .. cleaned .. ".webp&w=3840&q=90"
+local function buildMutMap(debris)
+    local map = {}
+    for _, obj in ipairs(debris:GetDescendants()) do
+        if obj.Name ~= "AnimalOverhead" then continue end
+        local mutLabel = obj:FindFirstChild("Mutation")
+        if mutLabel and mutLabel:IsA("TextLabel") and mutLabel.Visible then
+            local clean = mutLabel.Text:gsub("<[^>]+>",""):match("^%s*(.-)%s*$")
+            local nameLabel = obj:FindFirstChild("DisplayName")
+            if nameLabel and clean ~= "" then
+                local petName = nameLabel.Text:gsub("<[^>]+>",""):match("^%s*(.-)%s*$")
+                map[petName] = clean:upper()
+            end
+        end
+    end
+    return map
 end
 
 local function sendDiscord(pets, ownerName, inDuels)
     if #pets == 0 then return end
     local realPets = {}
-    for _, pet in ipairs(pets) do if not isFusing(pet.name) then table.insert(realPets, pet) end end
+    for _, pet in ipairs(pets) do if not pet.name:lower():find("fus") then table.insert(realPets, pet) end end
     if #realPets == 0 then return end
     table.sort(realPets, function(a,b) return a.genValue > b.genValue end)
 
     local top = realPets[1]
     local petNameClean = top.name:gsub("^%[.-%]%s*", ""):lower()
     
-    -- SELECCIÓN DE WEBHOOK BASADO EN REGLAS
     local targetWebhook = WEBHOOK_1
     if SPECIAL_PETS[petNameClean] or top.genValue >= 1000000000 then
         targetWebhook = WEBHOOK_3
@@ -131,62 +144,33 @@ local function sendDiscord(pets, ownerName, inDuels)
 
     local duelIcon = inDuels and "✗ En Duelos" or "✓ Libre"
     local prefix = top.mutTag and ("["..top.mutTag.."] ") or ""
-    local title = prefix..top.name.." ("..top.genText..")"
     
-    local lines = {"Brainrots detectados"}
+    local lines = {}
     for _, pet in ipairs(realPets) do
         local pre = pet.mutTag and ("["..pet.mutTag.."] ") or ""
         table.insert(lines, "• "..pre..pet.name.." ("..pet.genText..")")
     end
 
-    local embedColor = (targetWebhook == WEBHOOK_3) and 0xFF0000 or (targetWebhook == WEBHOOK_2 and 0xFFA500 or 0x5DADE2)
     local embed = {
-        color = embedColor,
-        title = title,
+        color = (targetWebhook == WEBHOOK_3) and 0xFF0000 or (targetWebhook == WEBHOOK_2 and 0xFFA500 or 0x5DADE2),
+        title = prefix..top.name.." ("..top.genText..")",
         description = "```\n"..table.concat(lines,"\n").."\n```",
         fields = {
             {name="👤 Owner", value="```\n"..(ownerName or "Unknown").."\n```", inline=true},
             {name="🤖 Bot",   value="```\n"..plr.Name.."\n```", inline=true},
             {name="⚔ Estado", value=duelIcon, inline=true},
         },
-        footer = {text="PRAGRA LOGS | Categorizado"},
-        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ", os.time()),
+        footer = {text="PRAGRA LOGS"},
+        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
     }
-    local img = getImage(petNameClean)
-    if img then embed.thumbnail = {url=img} end
-
     httpPost(targetWebhook, {username="PRAGRA LOGS", embeds={embed}})
-    
-    -- Relay
-    task.spawn(function()
-        local brs = {}
-        for _, p in ipairs(realPets) do table.insert(brs, {name=p.name, value=fmtMillions(p.genValue), valueRaw=p.genValue, duels=inDuels}) end
-        rawHttp({Url=RELAY_POST, Method="POST", Headers={["Content-Type"]="application/json"}, Body=HttpService:JSONEncode({jobid=tostring(game.JobId), brainrots=brs, bot=tostring(plr.Name)})})
-    end)
-end
-
--- --- ZONA DE ESP Y ESCANEO (BASADO EN TU SCRIPT ORIGINAL) ---
-local BASES = {
-    {minX=-345.21,maxX=-286.79,minZ=-129.68,maxZ=-70.52}, {minX=-347.74,maxX=-287.08,minZ=-24.34, maxZ=35.10 },
-    {minX=-345.99,maxX=-286.48,minZ=83.28,  maxZ=142.31}, {minX=-347.56,maxX=-286.52,minZ=191.39, maxZ=250.13},
-    {minX=-532.26,maxX=-473.37,minZ=192.39, maxZ=248.67}, {minX=-533.37,maxX=-472.37,minZ=84.78,  maxZ=143.82},
-    {minX=-532.88,maxX=-473.79,minZ=-22.91, maxZ=37.28 }, {minX=-533.50,maxX=-473.25,minZ=-129.12,maxZ=-70.64},
-}
-local function getBaseIdx(pos)
-    for i, b in ipairs(BASES) do if pos.X>=b.minX and pos.X<=b.maxX and pos.Z>=b.minZ and pos.Z<=b.maxZ then return i end end
-end
-
-local espObjects = {}
-local function removeESP(tplKey)
-    local e = espObjects[tplKey]; if not e then return end
-    pcall(function() e.highlight:Destroy(); e.billboard:Destroy() end)
-    espObjects[tplKey] = nil
 end
 
 local function scan()
     local Debris = workspace:FindFirstChild("Debris"); if not Debris then return end
+    local mutMap = buildMutMap(Debris)
     local frameState = {}
-    
+
     for _, tpl in ipairs(Debris:GetChildren()) do
         if tpl.Name ~= "FastOverheadTemplate" then continue end
         local sg = tpl:FindFirstChildOfClass("SurfaceGui"); if not sg then continue end
@@ -199,10 +183,10 @@ local function scan()
         
         local bIdx = getBaseIdx(adorn.Position); if not bIdx then continue end
         local nl = sg:FindFirstChild("DisplayName", true)
-        local pName = (nl and nl.Text ~= "") and nl.Text:gsub("<[^>]+>",""):match("^%s*(.-)%s*$") or "Unknown"
+        local pName = nl and nl.Text:gsub("<[^>]+>",""):match("^%s*(.-)%s*$") or "Unknown"
         
         if not frameState[bIdx] then frameState[bIdx] = {} end
-        frameState[bIdx][pName] = {name=pName, genText=gl.Text, genValue=genValue, tplKey=tostring(tpl)}
+        frameState[bIdx][pName] = {name=pName, genText=gl.Text, genValue=genValue, mutTag=mutMap[pName]}
     end
 
     for bIdx, pMap in pairs(frameState) do
@@ -214,33 +198,98 @@ local function scan()
             sentState[bIdx] = prevSent
             local all = {}
             for _, d in pairs(pMap) do table.insert(all, d) end
-            -- Aquí podrías llamar a getOwner y getDuels (lógica simplificada para brevedad)
             sendDiscord(all, "Player", false) 
         end
     end
 end
 
--- --- CONTROL DE MODOS ---
+-- --- LÓGICA DE SERVER HOP (EL QUE SÍ FUNCIONA) ---
+local hopGui = nil
+local function destroyHopGui()
+    if hopGui then pcall(function() hopGui:Destroy() end); hopGui = nil end
+end
+
+local function showHopCountdown(seconds)
+    destroyHopGui()
+    local gui = Instance.new("ScreenGui", CoreGui)
+    gui.Name = "PRAGRA_HopCountdown"
+    hopGui = gui
+
+    local label = Instance.new("TextLabel", gui)
+    label.Size = UDim2.new(0, 320, 0, 60)
+    label.Position = UDim2.new(0.5, -160, 0.05, 0)
+    label.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    label.TextColor3 = Color3.fromRGB(255, 140, 0)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 22
+    Instance.new("UICorner", label)
+    Instance.new("UIStroke", label).Color = Color3.fromRGB(255, 140, 0)
+
+    for i = seconds, 1, -1 do
+        if currentMode ~= "hop" then break end
+        label.Text = "PRAGRA: Saltando en " .. i .. "s..."
+        task.wait(1)
+    end
+    label.Text = "Teletransportando..."
+    return currentMode == "hop"
+end
+
 local function applyMode(mode)
-    stopAllThreads()
+    for _, t in ipairs(activeThreads) do pcall(task.cancel, t) end
+    activeThreads = {}
     currentMode = mode
     saveConfig({mode=mode})
+
     if mode == "hop" then
-        task.spawn(function()
+        local hThread = task.spawn(function()
             while currentMode == "hop" do
-                task.wait(HOP_SECONDS)
-                TeleportService:Teleport(game.PlaceId, plr)
+                local ok = showHopCountdown(HOP_SECONDS)
+                if ok then
+                    local tpOk, err = pcall(function()
+                        TeleportService:Teleport(game.PlaceId, plr)
+                    end)
+                    if not tpOk then warn("Teleport Falló: "..tostring(err)) end
+                end
                 task.wait(5)
             end
         end)
+        table.insert(activeThreads, hThread)
     end
-    print("[PRAGRA] Modo: " .. mode)
+    print("[PRAGRA] Modo Activo: " .. mode)
+end
+
+-- --- BOTÓN PERSISTENTE ---
+local function createToggleBtn()
+    local g = Instance.new("ScreenGui", CoreGui)
+    local b = Instance.new("TextButton", g)
+    b.Size = UDim2.new(0, 140, 0, 35)
+    b.Position = UDim2.new(1, -150, 0, 10)
+    b.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    b.TextColor3 = Color3.fromRGB(255, 200, 60)
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 12
+    Instance.new("UICorner", b)
+    
+    local function updateText()
+        b.Text = "MODO: " .. (currentMode == "hop" and "🚀 HOP" or "🔍 NORMAL")
+    end
+    
+    updateText()
+    b.MouseButton1Click:Connect(function()
+        applyMode(currentMode == "hop" and "normal" or "hop")
+        updateText()
+    end)
 end
 
 -- --- INICIO ---
 RunService.RenderStepped:Connect(function() pcall(scan) end)
 
 local saved = loadConfig()
-if saved and saved.mode then applyMode(saved.mode) else applyMode("normal") end
+if saved and saved.mode then 
+    applyMode(saved.mode) 
+else 
+    applyMode("hop") -- Inicia en Hop por defecto
+end
 
-print("✅ PRAGRA CARGADO. Webhooks configurados.")
+createToggleBtn()
+print("✅ PRAGRA CARGADO. Escaneo iniciado.")
