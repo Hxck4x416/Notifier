@@ -35,27 +35,21 @@ local SPECIAL_PETS = {
 local MIN_GEN      = 1000000 
 local HOP_SECONDS  = 6
 
--- --- FUNCIONES DE IMAGEN (BASADO EN EL NOMBRE DETECTADO) ---
+-- --- FUNCIONES DE IMAGEN ---
 local function getImage(name)
     if not name then return nil end
     local cleaned = name:lower():gsub(" ", "-")
     return "https://steal-a-brainrot.org/_next/image?url=%2Fimages%2Fbrainrots%2F" .. cleaned .. ".webp&w=3840&q=90"
 end
 
--- --- FILTRO DE MÁQUINA (EVITA h, m, s) ---
+-- --- FILTRO DE MÁQUINA (h, m, s) ---
 local function isMachineGen(genText)
     if not genText then return false end
     local t = tostring(genText):lower():gsub("%s+","")
-    
-    -- Filtra formatos de tiempo: 1h, 20m 30s, etc.
     local isTime = t:match("%d+h") or t:match("%d+m%d+s") or t:match("%d+h%d+m")
-    
-    -- Si el número es entero y termina en 'm' o 's' sin punto (ej: 21m), es tiempo.
-    -- Las pets reales son "21.0M" o "100M" (con M mayúscula o procesadas por parseGen)
     if not t:find("%.") and (t:match("^%d+m$") or t:match("^%d+s$")) then
         isTime = true
     end
-    
     return isTime
 end
 
@@ -71,7 +65,7 @@ local function parseGen(text)
     return math.floor(n)
 end
 
--- --- HTTP POST ---
+-- --- HTTP ---
 local function httpPost(url, payload)
     local fn = request or http_request or (rawget(_G, "request"))
     if not fn then return end
@@ -85,11 +79,48 @@ local function httpPost(url, payload)
     end)
 end
 
--- --- ESCANEO DE SERVIDOR ---
+-- --- FUNCIÓN DE ENVÍO (FORMATO ANTIGUO + IMAGEN - BOT) ---
+local function sendToDiscord(pets, ownerName)
+    if #pets == 0 then return end
+    table.sort(pets, function(a,b) return a.genValue > b.genValue end)
+    
+    local top = pets[1]
+    local petNameClean = top.name:gsub("^%[.-%]%s*", ""):lower()
+    
+    local targetWebhook = WEBHOOK_1
+    if SPECIAL_PETS[petNameClean] or top.genValue >= 1000000000 then
+        targetWebhook = WEBHOOK_3
+    elseif top.genValue >= 100000000 then
+        targetWebhook = WEBHOOK_2
+    end
+
+    local lines = {}
+    for _, pet in ipairs(pets) do
+        table.insert(lines, "• " .. pet.name .. " (" .. pet.genText .. ")")
+    end
+
+    local embed = {
+        title = top.name .. " (" .. top.genText .. ")",
+        description = "```\n" .. table.concat(lines, "\n") .. "\n```",
+        color = (targetWebhook == WEBHOOK_3) and 16711680 or (targetWebhook == WEBHOOK_2 and 16753920 or 6139362),
+        thumbnail = { url = getImage(top.name) },
+        fields = {
+            {name = "👤 Owner", value = "```\n" .. ownerName .. "\n```", inline = true},
+            {name = "⚔ Estado", value = "✓ Libre", inline = true}
+        },
+        footer = { text = "PRAGRA LOGS" },
+        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+    }
+
+    httpPost(targetWebhook, {username = "PRAGRA LOGS", embeds = {embed}})
+end
+
+-- --- ESCANEO ---
 local function scan()
     local Debris = workspace:FindFirstChild("Debris")
     if not Debris then return end
     
+    local foundPets = {}
     for _, tpl in ipairs(Debris:GetChildren()) do
         if tpl.Name == "FastOverheadTemplate" then
             local sg = tpl:FindFirstChildOfClass("SurfaceGui")
@@ -100,75 +131,40 @@ local function scan()
                 if genValue >= MIN_GEN then
                     local nl = sg:FindFirstChild("DisplayName", true)
                     local pName = nl and nl.Text:gsub("<[^>]+>",""):match("^%s*(.-)%s*$") or "Unknown"
-                    local petNameLower = pName:lower()
-
-                    local target = WEBHOOK_1
-                    if SPECIAL_PETS[petNameLower] or genValue >= 1000000000 then
-                        target = WEBHOOK_3
-                    elseif genValue >= 100000000 then
-                        target = WEBHOOK_2
-                    end
-
-                    local imgUrl = getImage(pName)
-
-                    httpPost(target, {
-                        username = "PRAGRA AUTOMATIC",
-                        embeds = {{
-                            title = "🚀 Brainrot: " .. pName,
-                            color = (target == WEBHOOK_3) and 16711680 or (target == WEBHOOK_2 and 16753920 or 6139362),
-                            thumbnail = { url = imgUrl },
-                            fields = {
-                                {name = "Valor Detectado", value = "**" .. gl.Text .. "**", inline = true},
-                                {name = "Bot", value = plr.Name, inline = true}
-                            },
-                            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
-                        }}
-                    })
+                    table.insert(foundPets, {name = pName, genText = gl.Text, genValue = genValue})
                 end
             end
         end
     end
-end
-
--- --- ANTI-AFK ---
-local function setupAntiAfk()
-    pcall(function()
-        plr.Idled:Connect(function()
-            game:GetService("VirtualUser"):CaptureController()
-            game:GetService("VirtualUser"):ClickButton2(Vector2.new())
-        end)
-    end)
-end
-
--- --- INICIO AUTOMÁTICO ---
-local function startBot()
-    setupAntiAfk()
     
+    if #foundPets > 0 then
+        sendToDiscord(foundPets, "Player")
+    end
+end
+
+-- --- SISTEMA DE AUTO-HOP ---
+local function startBot()
     local gui = Instance.new("ScreenGui", CoreGui)
     local label = Instance.new("TextLabel", gui)
     label.Size = UDim2.new(0, 300, 0, 60)
     label.Position = UDim2.new(0.5, -150, 0.05, 0)
     label.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    label.TextColor3 = Color3.fromRGB(255, 140, 0)
+    label.TextColor3 = Color3.fromRGB(255, 160, 0)
     label.Font = Enum.Font.GothamBold
     label.TextSize = 16
     Instance.new("UICorner", label)
 
-    label.Text = "ESCANEANDO DATOS..."
+    label.Text = "ESCANEANDO..."
     pcall(scan)
     task.wait(2)
 
     for i = HOP_SECONDS, 1, -1 do
-        label.Text = "PRÓXIMO SALTO EN: " .. i .. "s"
+        label.Text = "PRÓXIMO SERVIDOR EN: " .. i .. "s"
         task.wait(1)
     end
 
-    label.Text = "SALTANDO DE SERVIDOR..."
-    
     while true do
-        pcall(function()
-            TeleportService:Teleport(game.PlaceId, plr)
-        end)
+        pcall(function() TeleportService:Teleport(game.PlaceId, plr) end)
         task.wait(4)
     end
 end
