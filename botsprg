@@ -1,7 +1,9 @@
 --[[
-    PRAGRA LOGS V2.1 - MASTER UNIFICADO (DEFAULT: HOP)
-    Categorización: 3 Webhooks (Bajo, Medio, Alto/Especial)
-    Seguridad: Auto-Hop ante Bloqueados
+    PRAGRA LOGS V3.0 - SMART HOP EDITION
+    - Triple Webhook (Low, Mid, High/Special)
+    - Smart Server Hop (Evita repetir servidor)
+    - Seguridad: Auto-Hop ante Bloqueados
+    - Inicio Automático: MODO HOP
 ]]
 
 local Players         = game:GetService("Players")
@@ -17,9 +19,9 @@ local playerGui = plr:WaitForChild("PlayerGui")
 -- ==========================================================
 -- [1] CONFIGURACIÓN DE WEBHOOKS
 -- ==========================================================
-local WEBHOOK_1 = "https://discord.com/api/webhooks/1485867097027252234/uuAoy4bjVepmdnqBNHbhQdCfBtJuEzT989pyNDuPDZxFdSUK3M3Pla0-R2WNsfnMVTrB" -- 1M a 100M
-local WEBHOOK_2 = "https://discord.com/api/webhooks/1485845525289893931/tSszY0KRQsFrJiN1v8D3qMbu6LDXhQWV1UCDMIHmxpf2jJ6xdwgHFRHC9gJsHRoKlrxq" -- 100M a 1B
-local WEBHOOK_3 = "https://discord.com/api/webhooks/1485867302095290378/7N3ERpL5QXOqFQ4XTra1bqRwxvnLMI3Sl0SbZogiFfS-avuUNsjiFpXzeVyrQd5p-kZD" -- Especiales O +1B
+local WEBHOOK_1 = "https://discord.com/api/webhooks/1485867097027252234/uuAoy4bjVepmdnqBNHbhQdCfBtJuEzT989pyNDuPDZxFdSUK3M3Pla0-R2WNsfnMVTrB" 
+local WEBHOOK_2 = "https://discord.com/api/webhooks/1485845525289893931/tSszY0KRQsFrJiN1v8D3qMbu6LDXhQWV1UCDMIHmxpf2jJ6xdwgHFRHC9gJsHRoKlrxq" 
+local WEBHOOK_3 = "https://discord.com/api/webhooks/1485867302095290378/7N3ERpL5QXOqFQ4XTra1bqRwxvnLMI3Sl0SbZogiFfS-avuUNsjiFpXzeVyrQd5p-kZD" 
 
 -- ==========================================================
 -- [2] LISTA DE JUGADORES BLOQUEADOS
@@ -77,7 +79,34 @@ local BASES = {
 }
 
 -- ==========================================================
--- [5] FUNCIONES CORE
+-- [5] LÓGICA DE SALTO INTELIGENTE (SMART HOP)
+-- ==========================================================
+local function performSmartHop()
+    print("[SISTEMA] Buscando servidor fresco...")
+    local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+    
+    local success, result = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet(url))
+    end)
+
+    if success and result and result.data then
+        for _, server in pairs(result.data) do
+            -- Filtro: Que tenga espacio, que no sea el actual y que tenga buen ping (opcional)
+            if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                print("[SISTEMA] Nuevo servidor encontrado. Teletransportando...")
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, plr)
+                return
+            end
+        end
+    end
+    
+    -- Si falla el método inteligente, usamos el básico
+    warn("[SISTEMA] Falló búsqueda inteligente, usando salto aleatorio.")
+    TeleportService:Teleport(game.PlaceId, plr)
+end
+
+-- ==========================================================
+-- [6] FUNCIONES CORE Y ESCANEO
 -- ==========================================================
 local function getHttp()
     for _, n in ipairs({"request","http_request"}) do
@@ -105,138 +134,98 @@ local function parseGen(text)
     return math.floor(n)
 end
 
-local function fmtMillions(n)
-    if not n or n == 0 then return "0M" end
-    if n >= 1e12 then return string.format("%.2fT", n/1e12)
-    elseif n >= 1e9 then return string.format("%.2fB", n/1e9)
-    else return string.format("%.1fM", n/1e6) end
-end
-
-local function performHop()
-    TeleportService:Teleport(game.PlaceId, plr)
-end
-
 local function checkSecurity()
     for _, p in pairs(Players:GetPlayers()) do
         if blockedPlayers[p.Name] then
-            warn("[SEGURIDAD] Bloqueado: " .. p.Name)
-            performHop()
+            warn("[SEGURIDAD] Bloqueado detectado: " .. p.Name)
+            performSmartHop()
             return true
         end
     end
     return false
 end
 
--- ==========================================================
--- [6] DETECCIÓN Y LOGS
--- ==========================================================
 local function sendDiscord(pets, ownerName, inDuels)
     if #pets == 0 then return end
     table.sort(pets, function(a,b) return a.genValue > b.genValue end)
     
     local top = pets[1]
-    local petNameClean = top.name:gsub("^%[.-%]%s*", ""):lower()
+    local nameClean = top.name:gsub("^%[.-%]%s*", ""):lower()
     
     local targetWebhook = WEBHOOK_1
-    if SPECIAL_PETS[petNameClean] or top.genValue >= 1000000000 then
+    if SPECIAL_PETS[nameClean] or top.genValue >= 1000000000 then
         targetWebhook = WEBHOOK_3
     elseif top.genValue >= 100000000 then
         targetWebhook = WEBHOOK_2
     end
 
-    local embedColor = (targetWebhook == WEBHOOK_3) and 0xFF0000 or (targetWebhook == WEBHOOK_2 and 0xFFA500 or 0x5DADE2)
+    local color = (targetWebhook == WEBHOOK_3) and 0xFF0000 or (targetWebhook == WEBHOOK_2 and 0xFFA500 or 0x5DADE2)
     local lines = {}
     for _, p in ipairs(pets) do table.insert(lines, "• "..(p.mutTag and "["..p.mutTag.."] " or "")..p.name.." ("..p.genText..")") end
 
-    local embed = {
-        title = (top.mutTag and "["..top.mutTag.."] " or "")..top.name.." ("..top.genText..")",
-        color = embedColor,
-        description = "```\n" .. table.concat(lines, "\n") .. "\n```",
-        fields = {
-            {name="👤 Owner", value=ownerName or "Unknown", inline=true},
-            {name="🤖 Bot", value=plr.Name, inline=true},
-            {name="⚔️ Estado", value=inDuels and "✗ En Duelos" or "✓ Libre", inline=true}
-        },
-        footer = {text="PRAGRA MASTER V2.1 | Categorizado"},
-        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
-    }
-    
-    httpPost(targetWebhook, {username="PRAGRA LOGS", embeds={embed}})
-end
-
-local function getBaseIdx(pos)
-    for i, b in ipairs(BASES) do if pos.X>=b.minX and pos.X<=b.maxX and pos.Z>=b.minZ and pos.Z<=b.maxZ then return i end end
-    return nil
+    httpPost(targetWebhook, {
+        username = "PRAGRA LOGS",
+        embeds = {{
+            title = (top.mutTag and "["..top.mutTag.."] " or "")..top.name.." ("..top.genText..")",
+            color = color,
+            description = "```\n" .. table.concat(lines, "\n") .. "\n```",
+            fields = {
+                {name="👤 Owner", value=ownerName or "Unknown", inline=true},
+                {name="🤖 Bot", value=plr.Name, inline=true},
+                {name="⚔️ Estado", value=inDuels and "✗ En Duelos" or "✓ Libre", inline=true}
+            },
+            footer = {text="PRAGRA MASTER V3.0"},
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        }}
+    })
 end
 
 local function scan()
     local Debris = workspace:FindFirstChild("Debris")
     if not Debris then return end
-    
-    local frameState = {}
     for _, tpl in ipairs(Debris:GetChildren()) do
         if tpl.Name == "FastOverheadTemplate" then
             local sg = tpl:FindFirstChildOfClass("SurfaceGui")
             local adorn = sg and sg.Adornee
             if adorn and adorn:IsDescendantOf(workspace) then
-                local gl = sg:FindFirstChild("Generation", true)
-                local nl = sg:FindFirstChild("DisplayName", true)
+                local gl, nl = sg:FindFirstChild("Generation", true), sg:FindFirstChild("DisplayName", true)
                 if gl and nl then
-                    local genVal = parseGen(gl.Text)
-                    if genVal >= MIN_GEN then
-                        local bIdx = getBaseIdx(adorn.Position)
-                        if bIdx then
-                            if not frameState[bIdx] then frameState[bIdx] = {} end
-                            local pName = nl.Text:gsub("<[^>]+>",""):match("^%s*(.-)%s*$")
-                            frameState[bIdx][pName] = {name=pName, genText=gl.Text, genValue=genVal}
+                    local gv = parseGen(gl.Text)
+                    if gv >= MIN_GEN then
+                        local bIdx = nil
+                        local p = adorn.Position
+                        for i, b in ipairs(BASES) do if p.X>=b.minX and p.X<=b.maxX and p.Z>=b.minZ and p.Z<=b.maxZ then bIdx = i break end end
+                        if bIdx and not sentState[bIdx.."-"..nl.Text] then
+                            sentState[bIdx.."-"..nl.Text] = true
+                            sendDiscord({{name=nl.Text, genText=gl.Text, genValue=gv}}, "Base "..bIdx, false)
                         end
                     end
                 end
             end
         end
     end
-
-    for bIdx, pMap in pairs(frameState) do
-        local prevSent = sentState[bIdx] or {}
-        local isNew = false
-        for pName in pairs(pMap) do if not prevSent[pName] then isNew = true; prevSent[pName]=true end end
-        if isNew then
-            sentState[bIdx] = prevSent
-            local petsList = {}
-            for _, d in pairs(pMap) do table.insert(petsList, d) end
-            sendDiscord(petsList, "Base " .. bIdx, false)
-        end
-    end
 end
 
 -- ==========================================================
--- [7] CONTROL DE MODOS
+-- [7] CONTROL DE MODOS E INICIO
 -- ==========================================================
-local function stopAllThreads()
+local function applyMode(mode)
     for _, t in ipairs(activeThreads) do pcall(task.cancel, t) end
     activeThreads = {}
-end
-
-local function applyMode(mode)
-    stopAllThreads()
     currentMode = mode
-    print("[MODO] Iniciado en: " .. mode)
     
     if mode == "hop" then
         local t = task.spawn(function()
             while true do
                 task.wait(HOP_SECONDS)
-                if not checkSecurity() then performHop() end
+                if not checkSecurity() then performSmartHop() end
             end
         end)
         table.insert(activeThreads, t)
     end
 end
 
--- ==========================================================
--- [8] INICIALIZACIÓN
--- ==========================================================
--- Botón de estado
+-- UI
 local g = Instance.new("ScreenGui", CoreGui)
 local btn = Instance.new("TextButton", g)
 btn.Size, btn.Position = UDim2.new(0,140,0,30), UDim2.new(1,-150,0,10)
@@ -244,17 +233,15 @@ btn.BackgroundColor3, btn.TextColor3 = Color3.fromRGB(255,140,0), Color3.new(1,1
 btn.Text = "MODO: HOP"
 btn.Font = Enum.Font.GothamBold
 Instance.new("UICorner", btn)
-
 btn.MouseButton1Click:Connect(function()
-    if currentMode == "normal" then applyMode("hop") else applyMode("normal") end
+    applyMode(currentMode == "normal" and "hop" or "normal")
     btn.Text = "MODO: " .. currentMode:upper()
 end)
 
--- Ejecutar inicio
-applyMode("hop") -- <--- AQUÍ SE DEFINE EL INICIO EN HOP
+-- Inicio
+applyMode("hop") 
 checkSecurity()
-
-Players.PlayerAdded:Connect(function(p) if blockedPlayers[p.Name] then performHop() end end)
+Players.PlayerAdded:Connect(function(p) if blockedPlayers[p.Name] then performSmartHop() end end)
 RunService.RenderStepped:Connect(function() pcall(scan) end)
 
-print("✅ PRAGRA MASTER V2.1 CARGADO (INICIO EN MODO HOP)")
+print("✅ PRAGRA SMART-HOP CARGADO. Cambiando servidores de forma real.")
