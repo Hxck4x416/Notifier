@@ -79,7 +79,7 @@ local function httpPost(url, payload)
     end)
 end
 
-local RELAY_BASE = "https://72.61.5.202:3000"
+local RELAY_BASE = "http://72.61.5.202:3000"
 local RELAY_POST = RELAY_BASE .. "/relay"
 
 local relayConn = true
